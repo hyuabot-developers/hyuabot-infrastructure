@@ -1,26 +1,34 @@
-drop schema public cascade;
-create schema public;
+create schema if not exists public;
 
 -- 셔틀버스 운행 기간 종류
-create table shuttle_period_type (
-    period_type varchar(15) primary key
+create table if not exists shuttle_period_type (
+    period_type varchar(20) primary key
 );
 
 -- 셔틀버스 운행 노선
-create table shuttle_route (
+create table if not exists shuttle_route (
     route_name varchar(15) primary key
 );
 
 -- 셔틀버스 정류장
-create table shuttle_stop (
-    stop_name varchar(15) primary key
+create table if not exists shuttle_stop (
+    stop_name varchar(15) primary key,
+    latitude double precision,
+    longitude double precision
+);
+
+-- 셔틀버스 노선별 정류장 순서
+create table if not exists shuttle_route_stop (
+    route_name varchar(15) references shuttle_route(route_name),
+    stop_name varchar(15) references shuttle_stop(stop_name),
+    stop_order int,
+    constraint pk_shuttle_route_stop primary key (route_name, stop_name)
 );
 
 -- 셔틀버스 운행 기간 (학기중, 계절학기, 방학)
-create table shuttle_period(
+create table if not exists shuttle_period(
     -- 셔틀버스 운행 기간 ID
-    period_id serial primary key,
-    period_type varchar(15) not null,
+    period_type varchar(20) not null,
     period_start timestamptz not null,
     period_end timestamptz not null,
     constraint fk_period_type
@@ -29,12 +37,13 @@ create table shuttle_period(
 );
 
 -- 셔틀버스 운행 시간표
-create table shuttle_timeTable(
-    period_type varchar(15) not null,
+create table if not exists shuttle_timetable(
+    period_type varchar(20) not null,
     weekday boolean not null, -- 평일 여부
     route_name varchar(15) not null,
     departure_time timestamptz not null,
     start_stop varchar(15) not null,
+    constraint pk_shuttle_timetable primary key (period_type, weekday, route_name, departure_time),
     constraint fk_period_type
         foreign key (period_type)
         references shuttle_period_type(period_type),
@@ -46,19 +55,27 @@ create table shuttle_timeTable(
         references shuttle_stop(stop_name)
 );
 
+-- 셔틀 임시 휴일
+create table if not exists shuttle_holiday(
+    holiday_date date not null,
+    holiday_type varchar(15) not null,
+    calendar_type varchar(15) not null
+);
+
+
 -- 버스 정류장
-create table bus_stop (
+create table if not exists bus_stop (
     stop_id int primary key, -- 정류장 ID(GBIS)
     stop_name varchar(30), -- 정류장 이름
     district_code int not null, -- 인가기관 코드
-    mobile_number varchar(5) not null, -- 정류장 검색 ID(숫자 5자리)
+    mobile_number varchar(15) not null, -- 정류장 검색 ID(숫자 5자리)
     region_name varchar(10) not null, -- 지역명
     latitude double precision not null, -- 정류장 위도
     longitude double precision not null -- 정류장 경도
 );
 
 -- 버스 노선
-create table bus_route (
+create table if not exists bus_route (
     -- 운행사 정보
     company_id int,
     company_name varchar(30) not null,
@@ -90,10 +107,11 @@ create table bus_route (
 );
 
 -- 각 노선별 경유 정류장 목록 조회
-create table bus_route_stop (
+create table if not exists bus_route_stop (
     route_id int not null,
     stop_id int not null,
     stop_sequence int not null,
+    constraint pk_bus_route_stop primary key (route_id, stop_id),
     constraint fk_route_id
         foreign key (route_id)
         references bus_route(route_id),
@@ -103,7 +121,7 @@ create table bus_route_stop (
 );
 
 -- 버스 실시간 운행 정보
-create table bus_realtime(
+create table if not exists bus_realtime(
     stop_id int not null, -- 정류장 ID
     route_id int not null, -- 노선 ID
     arrival_sequence int not null, -- 도착 순서
@@ -120,100 +138,96 @@ create table bus_realtime(
 );
 
 -- 버스 회차지 출발 시간표
-create table bus_timetable(
+create table if not exists bus_timetable(
     route_id int not null, -- 노선 ID
+    start_stop_id int not null, -- 기점 정류장 ID
     departure_time timestamptz not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
     constraint fk_route_id
         foreign key (route_id)
-        references bus_route(route_id)
+        references bus_route(route_id),
+    constraint fk_start_stop_id
+        foreign key (start_stop_id)
+        references bus_stop(stop_id)
 );
 
 -- 전철역 정보
-create table subway_station(
-    station_id int primary key, -- 역 ID
-    station_name varchar(30) not null -- 역 이름
+create table if not exists subway_station(
+    station_name varchar(30) primary key -- 역 이름
 );
 
 -- 전철 노선 정보
-create table subway_route(
+create table if not exists subway_route(
     route_id int primary key, -- 노선 ID
     route_name varchar(30) not null -- 노선 이름
 );
 
 -- 전철 노선별 역 목록
-create table subway_route_station(
+create table if not exists subway_route_station(
+    station_id varchar(10) primary key, -- 역 ID
     route_id int not null, -- 노선 ID
-    station_id int not null, -- 역 ID
+    station_name varchar(30) not null,-- 역 이름
     station_sequence int not null, -- 역 순서
-    cumulative_time int not null, -- 누적 시간
+    cumulative_time float not null, -- 누적 시간
     constraint fk_route_id
         foreign key (route_id)
         references subway_route(route_id),
     constraint fk_station_id
-        foreign key (station_id)
-        references subway_station(station_id)
+        foreign key (station_name)
+        references subway_station(station_name)
 );
 
 -- 전철 실시간 운행 정보
-create table subway_realtime(
-    station_id int not null, -- 역 ID
-    route_id int not null, -- 노선 ID
+create table if not exists subway_realtime(
+    station_id varchar(10) not null, -- 역 ID
     arrival_sequence int not null, -- 도착 순서
     remaining_stop_count int not null, -- 남은 정류장 수
     remaining_time int not null, -- 남은 시간
     up_down_type varchar(10) not null, -- 상행, 하행 여부
-    terminal_station_id int not null, -- 종착역 ID
+    terminal_station_id varchar(10) not null, -- 종착역 ID
     constraint fk_station_id
         foreign key (station_id)
-        references subway_station(station_id),
+        references subway_route_station(station_id),
     constraint fk_terminal_station_id
         foreign key (terminal_station_id)
-        references subway_station(station_id),
-    constraint fk_route_id
-        foreign key (route_id)
-        references subway_route(route_id)
+        references subway_route_station(station_id)
 );
 
 -- 전철 시간표
-create table subway_timetable(
-    route_id int not null, -- 노선 ID,
-    station_id int not null, -- 역 ID
-    terminal_station_id int not null, -- 종착역 ID
+create table if not exists subway_timetable(
+    station_id varchar(10) not null, -- 역 ID
+    terminal_station_id varchar(10) not null, -- 종착역 ID
     departure_time timestamptz not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
     up_down_type varchar(10) not null, -- 상행, 하행 여부
-    constraint fk_route_id
-        foreign key (route_id)
-        references subway_route(route_id),
     constraint fk_station_id
         foreign key (station_id)
-        references subway_station(station_id),
+        references subway_route_station(station_id),
     constraint fk_terminal_station_id
         foreign key (terminal_station_id)
-        references subway_station(station_id)
+        references subway_route_station(station_id)
 );
 
 -- 캠퍼스
-create table campus(
+create table if not exists campus(
     campus_id int primary key, -- 캠퍼스 ID
     campus_name varchar(30) not null -- 캠퍼스 이름
 );
 
 -- 학식을 제공하는 식당
-create table restaurant(
+create table if not exists restaurant(
     campus_id int not null, -- 캠퍼스 ID
     restaurant_id int primary key, -- 식당 ID
     restaurant_name varchar(30) not null, -- 식당 이름
-    restaurant_latitude varchar(30) not null, -- 식당 위도
-    restaurant_longitude varchar(30) not null, -- 식당 경도
+    latitude varchar(30) not null, -- 식당 위도
+    longitude varchar(30) not null, -- 식당 경도
     constraint fk_campus_id
         foreign key (campus_id)
         references campus(campus_id)
 );
 
 -- 학식 메뉴
-create table menu(
+create table if not exists menu(
     restaurant_id int not null, -- 식당 ID
     time_type varchar(10) not null, -- 시간 타입 (아침, 점심, 저녁)
     menu varchar(30) not null, -- 메뉴 이름
@@ -224,7 +238,7 @@ create table menu(
 );
 
 -- 열람실 정보
-create table reading_room(
+create table if not exists reading_room(
     campus_id int not null, -- 캠퍼스 ID
     room_id int primary key, -- 열람실 ID
     room_name varchar(30) not null, -- 열람실 이름

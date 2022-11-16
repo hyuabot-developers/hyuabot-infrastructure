@@ -1,2 +1,10 @@
 
 database/.idea/vcs.xml
+
+.vscode/
+
+database/.idea/
+
+database/initializer/.idea/
+
+*.pyc

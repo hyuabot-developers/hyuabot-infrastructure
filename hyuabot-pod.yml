@@ -1,0 +1,8 @@
+apiVersion: apps/v1
+kind: Pod
+metadata:
+  name: hyuabot
+  labels:
+    app: hyuabot
+    
+    

@@ -1,0 +1,3 @@
+[submodule "database/initializer"]
+	path = database/initializer
+	url = https://github.com/hyuabot-developers/hyuabot-database-initializer

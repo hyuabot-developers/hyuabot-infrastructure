@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyuabot-database
+  labels:
+    app: hyuabot-database
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: hyuabot-database

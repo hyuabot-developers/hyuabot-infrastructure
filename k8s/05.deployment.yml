@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyuabot-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyuabot-database
+  template:
+    metadata:
+      labels:
+        app: hyuabot-database
+    spec:
+      volumes:
+      - name: postgres-pv-volume
+        persistentVolumeClaim:
+          claimName: postgresql-pv-claim
+      containers:
+      - name: database
+        image: postgres:15-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: DB_ID
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        - name: POSTGRES_DB
+          value: hyuabot
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-pv-volume
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
