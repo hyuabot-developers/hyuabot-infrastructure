@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: subway-timetable-job
+spec:
+  template:
+    metadata:
+      name: subway-timetable-job
+    spec:
+      containers:
+      - name: subway-timetable-job
+        image: hyuabot-subway-timetable-job-image
+        imagePullPolicy: Never
+        env:
+          - name: POSTGRES_ID
+            valueFrom:
+              secretKeyRef:
+                name: secret
+                key: DB_ID
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secret
+                key: DB_PASSWORD
+          - name: POSTGRES_HOST
+            value: hyuabot-database
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: POSTGRES_DB
+            value: hyuabot
+      restartPolicy: Never

@@ -41,7 +41,7 @@ create table if not exists shuttle_timetable(
     period_type varchar(20) not null,
     weekday boolean not null, -- 평일 여부
     route_name varchar(15) not null,
-    departure_time timestamptz not null,
+    departure_time timetz not null,
     start_stop varchar(15) not null,
     constraint pk_shuttle_timetable primary key (period_type, weekday, route_name, departure_time),
     constraint fk_period_type
@@ -83,11 +83,11 @@ create table if not exists bus_route (
     -- 관리 기관 정보
     district_code int not null,
     -- 평일 기점 → 종점 방면 첫차, 막차
-    up_first_time timestamptz not null,
-    up_last_time timestamptz not null,
+    up_first_time timetz not null,
+    up_last_time timetz not null,
     -- 평일 종점 → 기점 방면 첫차, 막차
-    down_first_time timestamptz not null,
-    down_last_time timestamptz not null,
+    down_first_time timetz not null,
+    down_last_time timetz not null,
     -- 기점 정류소
     start_stop_id int not null,
     -- 종점 정류소
@@ -141,7 +141,7 @@ create table if not exists bus_realtime(
 create table if not exists bus_timetable(
     route_id int not null, -- 노선 ID
     start_stop_id int not null, -- 기점 정류장 ID
-    departure_time timestamptz not null, -- 출발 시간
+    departure_time timetz not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
     constraint fk_route_id
         foreign key (route_id)
@@ -181,10 +181,16 @@ create table if not exists subway_route_station(
 create table if not exists subway_realtime(
     station_id varchar(10) not null, -- 역 ID
     arrival_sequence int not null, -- 도착 순서
+    current_station_name varchar(30) not null, -- 현재 역 이름
     remaining_stop_count int not null, -- 남은 정류장 수
     remaining_time int not null, -- 남은 시간
     up_down_type varchar(10) not null, -- 상행, 하행 여부
     terminal_station_id varchar(10) not null, -- 종착역 ID
+    train_number varchar(10) not null, -- 열차 번호
+    last_updated_time timestamp not null, -- 마지막 업데이트 시간
+    is_express_train boolean not null, -- 급행 여부
+    is_last_train boolean not null, -- 막차 여부
+    status_code int not null, -- 상태 코드
     constraint fk_station_id
         foreign key (station_id)
         references subway_route_station(station_id),
@@ -197,7 +203,7 @@ create table if not exists subway_realtime(
 create table if not exists subway_timetable(
     station_id varchar(10) not null, -- 역 ID
     terminal_station_id varchar(10) not null, -- 종착역 ID
-    departure_time timestamptz not null, -- 출발 시간
+    departure_time timetz not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
     up_down_type varchar(10) not null, -- 상행, 하행 여부
     constraint fk_station_id
@@ -230,8 +236,8 @@ create table if not exists restaurant(
 create table if not exists menu(
     restaurant_id int not null, -- 식당 ID
     time_type varchar(10) not null, -- 시간 타입 (아침, 점심, 저녁)
-    menu varchar(30) not null, -- 메뉴 이름
-    menu_price int not null, -- 메뉴 가격
+    menu varchar(100) not null, -- 메뉴 이름
+    menu_price varchar(10) not null, -- 메뉴 가격
     constraint fk_restaurant_id
         foreign key (restaurant_id)
         references restaurant(restaurant_id)
@@ -244,10 +250,10 @@ create table if not exists reading_room(
     room_name varchar(30) not null, -- 열람실 이름
     is_active boolean not null, -- 열람실 활성화 여부
     is_reservable boolean not null, -- 열람실 예약 가능 여부
-    total_seat_count int not null, -- 열람실 총 좌석 수
-    total_active_seat_count int not null, -- 열람실 활성화된 좌석 수
-    occupied_seat_count int not null, -- 열람실 사용중인 좌석 수
-    available_seat_count int not null, -- 열람실 사용 가능한 좌석 수
+    total int not null, -- 열람실 총 좌석 수
+    active_total int not null, -- 열람실 활성화된 좌석 수
+    occupied int not null, -- 열람실 사용중인 좌석 수
+    available int not null, -- 열람실 사용 가능한 좌석 수
     constraint fk_campus_id
         foreign key (campus_id)
         references campus(campus_id)

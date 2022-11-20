@@ -1,3 +1,21 @@
-[submodule "database/initializer"]
-	path = database/initializer
+[submodule "containers/database"]
+	path = containers/database
 	url = https://github.com/hyuabot-developers/hyuabot-database-initializer
+[submodule "containers/bus/realtime"]
+	path = containers/bus/realtime
+	url = https://github.com/hyuabot-developers/hyuabot-bus-realtime-updater
+[submodule "containers/bus/timetable"]
+	path = containers/bus/timetable
+	url = https://github.com/hyuabot-developers/hyuabot-bus-timetable-updater
+[submodule "containers/subway/timetable"]
+	path = containers/subway/timetable
+	url = https://github.com/hyuabot-developers/hyuabot-subway-timetable-updater
+[submodule "containers/subway/realtime"]
+	path = containers/subway/realtime
+	url = https://github.com/hyuabot-developers/hyuabot-subway-realtime-updater
+[submodule "containers/library"]
+	path = containers/library
+	url = https://github.com/hyuabot-developers/hyuabot-library-updater
+[submodule "containers/cafeteria"]
+	path = containers/cafeteria
+	url = https://github.com/hyuabot-developers/hyuabot-cafeteria-updater

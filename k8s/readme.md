@@ -69,6 +69,47 @@ kubectl apply -f ./07.migration-database.yml
 minikube docker-env
 eval $(minikube -p minikube docker-env)
 # 초기화를 위한 docker 이미지 빌드
-docker build ../database/initializer -t hyuabot-database-initialize
+docker build ../containers/database -t hyuabot-database-initialize
 kubectl apply -f ./08.initialize-database.yml
+```
+
+13. 버스 시간표 데이터베이스에 적재
+```bash
+docker build ../containers/bus/timetable/ -t hyuabot-bus-timetable-job-image
+kubectl apply -f ./09.start-bus-timetable-job.yml
+```
+
+14. 버스 실시간 도착 정보를 데이터베이스에 적재하도록 작업 추가
+```bash
+docker build ../containers/bus/realtime -t hyuabot-bus-cron-job-image
+kubectl apply -f ./10.start-bus-realtime-cron-job.yml
+```
+
+15. 전철 시간표 데이터베이스에 적재
+```bash
+docker build ../containers/subway/timetable/ -t hyuabot-subway-timetable-job-image
+kubectl apply -f ./11.start-subway-timetable-job.yml
+```
+
+16. 전철 실시간 도착 정보를 데이터베이스에 적재하도록 작업 추가
+```bash
+docker build ../containers/subway/realtime/ -t hyuabot-subway-cron-job-image
+kubectl apply -f ./12.start-subway-realtime-cron-job.yml
+```
+
+17. 열람실 정보를 데이터베이스에 적재하도록 작업 추가
+```bash
+docker build ../containers/library/ -t hyuabot-reading-room-cron-job-image
+kubectl apply -f ./13.start-reading-room-cron-job.yml
+```
+
+18. 학식 정보를 데이터베이스에 적재하도록 작업 추가
+```bash
+docker build ../containers/cafeteria/ -t hyuabot-cafeteria-cron-job-image
+kubectl apply -f ./14.start-cafeteria-cron-job.yml
+```
+
+19. 크롤러가 제대로 데이터를 확인하기 위해
+```bash
+kubectl port-forward service/hyuabot-database 25432:5432 -> 25432 포트로 데이터베이스 접속 가능
 ```
