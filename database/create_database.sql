@@ -250,9 +250,9 @@ create table if not exists campus(
 create table if not exists restaurant(
     campus_id int not null, -- 캠퍼스 ID
     restaurant_id int primary key, -- 식당 ID
-    restaurant_name varchar(30) not null, -- 식당 이름
-    latitude varchar(30) not null, -- 식당 위도
-    longitude varchar(30) not null, -- 식당 경도
+    restaurant_name varchar(50) not null, -- 식당 이름
+    latitude double precision not null, -- 식당 위도
+    longitude double precision not null, -- 식당 경도
     constraint fk_campus_id
         foreign key (campus_id)
         references campus(campus_id)
@@ -263,7 +263,7 @@ create table if not exists menu(
     restaurant_id int not null, -- 식당 ID
     time_type varchar(10) not null, -- 시간 타입 (아침, 점심, 저녁)
     menu varchar(100) not null, -- 메뉴 이름
-    menu_price varchar(10) not null, -- 메뉴 가격
+    menu_price varchar(30) not null, -- 메뉴 가격
     constraint fk_restaurant_id
         foreign key (restaurant_id)
         references restaurant(restaurant_id)
