@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hyuabot-database
+  name: hyuabot-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hyuabot-database
+      app: hyuabot-deployment
   template:
     metadata:
       labels:
-        app: hyuabot-database
+        app: hyuabot-deployment
     spec:
       volumes:
       - name: postgres-pv-volume
