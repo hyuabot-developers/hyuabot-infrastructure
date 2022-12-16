@@ -24,7 +24,7 @@ spec:
                   name: secret
                   key: DB_PASSWORD
             - name: POSTGRES_HOST
-              value: hyuabot-deployment
+              value: hyuabot-database
             - name: POSTGRES_PORT
               value: "5432"
             - name: POSTGRES_DB

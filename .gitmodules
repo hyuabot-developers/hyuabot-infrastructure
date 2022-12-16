@@ -19,3 +19,6 @@
 [submodule "containers/cafeteria"]
 	path = containers/cafeteria
 	url = https://github.com/hyuabot-developers/hyuabot-cafeteria-updater
+[submodule "containers/api"]
+	path = containers/api
+	url = https://github.com/hyuabot-developers/hyuabot-backend-golang

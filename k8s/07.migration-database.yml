@@ -10,7 +10,7 @@ spec:
       containers:
       - name: migration-database
         image: postgres:15-alpine
-        command: ["sh", "-c", "export PGPASSWORD=$POSTGRES_PASSWORD; psql -h hyuabot-deployment -U $POSTGRES_ID -d $POSTGRES_DB -f /scripts/create_database.sql"]
+        command: ["sh", "-c", "export PGPASSWORD=$POSTGRES_PASSWORD; psql -h hyuabot-database -U $POSTGRES_ID -d $POSTGRES_DB -f /scripts/create_database.sql"]
         volumeMounts:
         - name: migration-script
           mountPath: /scripts

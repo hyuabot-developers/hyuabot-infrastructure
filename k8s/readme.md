@@ -50,7 +50,7 @@ kubectl create configmap create-database --from-file=../database/create_database
 
 9. PostgreSQL 배포
 ```bash
-kubectl apply -f ./05.deployment.yml
+kubectl apply -f ./05.database-deploy.yml
 ```
 
 10. PostgreSQL를 Pod 외부로 노출
@@ -111,5 +111,5 @@ kubectl apply -f ./14.start-cafeteria-cron-job.yml
 
 19. 크롤러가 제대로 데이터를 확인하기 위해
 ```bash
-kubectl port-forward service/hyuabot-deployment 25432:5432 -> 25432 포트로 데이터베이스 접속 가능
+kubectl port-forward service/hyuabot-database 25432:5432 -> 25432 포트로 데이터베이스 접속 가능
 ```
