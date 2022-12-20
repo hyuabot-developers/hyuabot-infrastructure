@@ -5,18 +5,21 @@ create table if not exists shuttle_period_type (
     period_type varchar(20) primary key
 );
 
--- 셔틀버스 운행 노선
-create table if not exists shuttle_route (
-    route_name varchar(15) primary key,
-    route_description_korean varchar(100),
-    route_description_english varchar(100)
-);
-
 -- 셔틀버스 정류장
 create table if not exists shuttle_stop (
     stop_name varchar(15) primary key,
     latitude double precision,
     longitude double precision
+);
+
+-- 셔틀버스 운행 노선
+create table if not exists shuttle_route (
+    route_name varchar(15) primary key,
+    route_description_korean varchar(100),
+    route_description_english varchar(100),
+    route_tag varchar(10),
+    start_stop varchar(15) references shuttle_stop(stop_name),
+    end_stop varchar(15) references shuttle_stop(stop_name)
 );
 
 -- 셔틀버스 노선별 정류장 순서

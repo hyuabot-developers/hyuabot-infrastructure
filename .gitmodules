@@ -22,3 +22,6 @@
 [submodule "containers/api"]
 	path = containers/api
 	url = https://github.com/hyuabot-developers/hyuabot-backend-golang
+[submodule "containers/shuttle"]
+	path = containers/shuttle
+	url = https://github.com/hyuabot-developers/hyuabot-shuttle-timetable-updater
