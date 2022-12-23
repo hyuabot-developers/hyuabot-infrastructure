@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: subway-timetable-job
+  namespace: hyuabot-prod
 spec:
   template:
     metadata:

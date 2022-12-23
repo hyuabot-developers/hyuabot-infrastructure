@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyuabot-database
+  namespace: hyuabot-prod
+  labels:
+    app: hyuabot-database
+spec:
+  type: ClusterIP
+  ports:
+   - name: postgresql
+     port: 5432
+     targetPort: 5432
+  selector:
+   app: hyuabot-database

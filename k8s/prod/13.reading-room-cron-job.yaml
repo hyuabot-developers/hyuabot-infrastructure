@@ -1,16 +1,17 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: cafeteria-cron-job
+  name: reading-room-cron-job
+  namespace: hyuabot-prod
 spec:
-  schedule: "0 * * * *"
+  schedule: "* * * * *"
   jobTemplate:
     spec:
       template:
         spec:
           containers:
-          - name: cafeteria-cron-job
-            image: hyuabot-cafeteria-cron-job-image
+          - name: reading-room-cron-job
+            image: hyuabot-reading-room-cron-job-image
             imagePullPolicy: Never
             env:
             - name: POSTGRES_ID

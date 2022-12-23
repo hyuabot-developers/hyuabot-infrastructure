@@ -1,27 +1,17 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: hyuabot-api
+  name: bus-timetable-job
+  namespace: hyuabot-prod
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: hyuabot-api
   template:
     metadata:
-      labels:
-        app: hyuabot-api
+      name: bus-timetable-job
     spec:
-      volumes:
-      - name: postgres-pv-volume
-        persistentVolumeClaim:
-          claimName: postgresql-pv-claim
       containers:
-      - name: api
-        image: hyuabot-api-server
+      - name: bus-timetable-job
+        image: hyuabot-bus-timetable-job-image
         imagePullPolicy: Never
-        ports:
-        - containerPort: 3000
         env:
           - name: POSTGRES_ID
             valueFrom:
@@ -39,3 +29,4 @@ spec:
             value: "5432"
           - name: POSTGRES_DB
             value: hyuabot
+      restartPolicy: Never

@@ -1,15 +1,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: bus-timetable-job
+  name: initialize-database
+  namespace: hyuabot-prod
 spec:
   template:
     metadata:
-      name: bus-timetable-job
+      name: initialize-database
     spec:
       containers:
-      - name: bus-timetable-job
-        image: hyuabot-bus-timetable-job-image
+      - name: initialize-database
+        image: hyuabot-database-initialize
         imagePullPolicy: Never
         env:
           - name: POSTGRES_ID

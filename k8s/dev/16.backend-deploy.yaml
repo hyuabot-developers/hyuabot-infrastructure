@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyuabot-api
+  namespace: hyuabot-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyuabot-api
+  template:
+    metadata:
+      labels:
+        app: hyuabot-api
+    spec:
+      containers:
+      - name: api
+        image: hyuabot-api-server
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3000
+        env:
+          - name: POSTGRES_ID
+            valueFrom:
+              secretKeyRef:
+                name: secret
+                key: DB_ID
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secret
+                key: DB_PASSWORD
+          - name: POSTGRES_HOST
+            value: hyuabot-database
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: POSTGRES_DB
+            value: hyuabot

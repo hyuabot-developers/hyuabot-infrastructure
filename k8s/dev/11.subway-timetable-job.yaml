@@ -1,15 +1,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: initialize-database
+  name: subway-timetable-job
+  namespace: hyuabot-dev
 spec:
   template:
     metadata:
-      name: initialize-database
+      name: subway-timetable-job
     spec:
       containers:
-      - name: initialize-database
-        image: hyuabot-database-initialize
+      - name: subway-timetable-job
+        image: hyuabot-subway-timetable-job-image
         imagePullPolicy: Never
         env:
           - name: POSTGRES_ID

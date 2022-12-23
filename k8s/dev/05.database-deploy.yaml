@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hyuabot-database
+  namespace: hyuabot-dev
 spec:
   replicas: 1
   selector:
@@ -13,9 +14,9 @@ spec:
         app: hyuabot-database
     spec:
       volumes:
-      - name: postgres-pv-volume
+      - name: dev-postgres-pv-volume
         persistentVolumeClaim:
-          claimName: postgresql-pv-claim
+          claimName: dev-postgresql-pv-claim
       containers:
       - name: database
         image: postgres:15-alpine
@@ -39,7 +40,7 @@ spec:
           value: hyuabot
         volumeMounts:
         - mountPath: /var/lib/postgresql/data
-          name: postgres-pv-volume
+          name: dev-postgres-pv-volume
         resources:
           requests:
             memory: "128Mi"

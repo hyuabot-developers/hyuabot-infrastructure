@@ -1,7 +1,8 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: reading-room-cron-job
+  name: subway-realtime-cron-job
+  namespace: hyuabot-prod
 spec:
   schedule: "* * * * *"
   jobTemplate:
@@ -9,8 +10,8 @@ spec:
       template:
         spec:
           containers:
-          - name: reading-room-cron-job
-            image: hyuabot-reading-room-cron-job-image
+          - name: subway-realtime-cron-job
+            image: hyuabot-subway-cron-job-image
             imagePullPolicy: Never
             env:
             - name: POSTGRES_ID
@@ -29,4 +30,9 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
+            - name: METRO_AUTH_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: METRO_API_KEY
           restartPolicy: OnFailure

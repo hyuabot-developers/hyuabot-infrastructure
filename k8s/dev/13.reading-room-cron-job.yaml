@@ -1,7 +1,8 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: bus-realtime-cron-job
+  name: reading-room-cron-job
+  namespace: hyuabot-dev
 spec:
   schedule: "* * * * *"
   jobTemplate:
@@ -9,8 +10,8 @@ spec:
       template:
         spec:
           containers:
-          - name: bus-realtime-cron-job
-            image: hyuabot-bus-cron-job-image
+          - name: reading-room-cron-job
+            image: hyuabot-reading-room-cron-job-image
             imagePullPolicy: Never
             env:
             - name: POSTGRES_ID

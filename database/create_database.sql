@@ -1,5 +1,30 @@
 create schema if not exists public;
 
+drop table if exists shuttle_period cascade;
+drop table if exists shuttle_timetable cascade;
+drop table if exists shuttle_period_type cascade;
+drop table if exists shuttle_route_stop cascade;
+drop table if exists shuttle_route cascade;
+drop table if exists shuttle_stop cascade;
+drop table if exists shuttle_holiday cascade;
+drop table if exists commute_shuttle_timetable cascade;
+drop table if exists commute_shuttle_route cascade;
+drop table if exists commute_shuttle_stop cascade;
+drop table if exists bus_realtime cascade;
+drop table if exists bus_route_stop cascade;
+drop table if exists bus_timetable cascade;
+drop table if exists bus_route cascade;
+drop table if exists bus_stop cascade;
+drop table if exists subway_realtime cascade;
+drop table if exists subway_timetable cascade;
+drop table if exists subway_route_station cascade;
+drop table if exists subway_station cascade;
+drop table if exists subway_route cascade;
+drop table if exists menu cascade;
+drop table if exists restaurant cascade;
+drop table if exists reading_room cascade;
+drop table if exists campus cascade;
+
 -- 셔틀버스 운행 기간 종류
 create table if not exists shuttle_period_type (
     period_type varchar(20) primary key
