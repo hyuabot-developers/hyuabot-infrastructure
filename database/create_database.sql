@@ -259,6 +259,7 @@ create table if not exists subway_realtime(
 -- 전철 시간표
 create table if not exists subway_timetable(
     station_id varchar(10) not null, -- 역 ID
+    start_station_id varchar(10) not null, -- 출발역 ID
     terminal_station_id varchar(10) not null, -- 종착역 ID
     departure_time time not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
@@ -266,6 +267,9 @@ create table if not exists subway_timetable(
     constraint pk_subway_timetable primary key (station_id, up_down_type, weekday, departure_time),
     constraint fk_station_id
         foreign key (station_id)
+        references subway_route_station(station_id),
+    constraint fk_start_station_id
+        foreign key (start_station_id)
         references subway_route_station(station_id),
     constraint fk_terminal_station_id
         foreign key (terminal_station_id)
