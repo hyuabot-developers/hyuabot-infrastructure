@@ -30,4 +30,9 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
+            - name: FIREBASE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: FIREBASE_TOKEN
           restartPolicy: OnFailure
