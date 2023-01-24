@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyuabot-kakao-backend
+  namespace: hyuabot-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyuabot-kakao-backend
+  template:
+    metadata:
+      labels:
+        app: hyuabot-kakao-backend
+    spec:
+      containers:
+      - name: api
+        image: hyuabot-kakao-server
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3000
+        env:
+          - name: API_URL
+            value: hyuabot-api

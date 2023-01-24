@@ -29,3 +29,6 @@
 	path = web
 	url = https://github.com/hyuabot-developers/hyuabot-client-pwa
 	branch = gh-pages
+[submodule "containers/kakao"]
+	path = containers/kakao
+	url = https://github.com/hyuabot-developers/hyuabot-kakao-i-server-golang
