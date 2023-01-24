@@ -21,4 +21,4 @@ spec:
         - containerPort: 3000
         env:
           - name: API_URL
-            value: hyuabot-api
+            value: http://hyuabot-api
