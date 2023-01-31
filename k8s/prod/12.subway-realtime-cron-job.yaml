@@ -30,9 +30,15 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
+            - name: POSTGRES_EXTERNAL_HOST
+              value: "132.226.172.190"
+            - name: POSTGRES_EXTERNAL_PORT
+              value: "30432"
             - name: METRO_AUTH_KEY
               valueFrom:
                 secretKeyRef:
                   name: secret
                   key: METRO_API_KEY
           restartPolicy: OnFailure
+          nodeSelector:
+            kubernetes.io/hostname: personal-project-vm

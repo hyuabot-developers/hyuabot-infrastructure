@@ -30,9 +30,15 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
+            - name: POSTGRES_EXTERNAL_HOST
+              value: "132.226.172.190"
+            - name: POSTGRES_EXTERNAL_PORT
+              value: "30432"
             - name: FIREBASE_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: secret
                   key: FIREBASE_TOKEN
           restartPolicy: OnFailure
+          nodeSelector:
+            kubernetes.io/hostname: personal-project-vm

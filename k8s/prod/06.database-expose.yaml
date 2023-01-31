@@ -6,10 +6,9 @@ metadata:
   labels:
     app: hyuabot-database
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
-   - name: postgresql
-     port: 5432
-     targetPort: 5432
+  - port: 5432
+    nodePort: 30432
   selector:
    app: hyuabot-database
