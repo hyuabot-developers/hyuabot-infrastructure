@@ -35,3 +35,5 @@ spec:
             - name: POSTGRES_DB
               value: hyuabot
           restartPolicy: OnFailure
+          nodeSelector:
+            kubernetes.io/hostname: personal-project-vm
