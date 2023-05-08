@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyuabot-api-python-development
+  namespace: hyuabot-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyuabot-api-python-development
+  template:
+    metadata:
+      labels:
+        app: hyuabot-api-python-development
+    spec:
+      containers:
+      - name: api
+        image: hyuabot-api-server-python
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: secret
+                key: DB_ID
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secret
+                key: DB_PASSWORD
+          - name: DB_HOST
+            value: hyuabot-database
+          - name: DB_PORT
+            value: "5432"
+          - name: DB_NAME
+            value: hyuabot

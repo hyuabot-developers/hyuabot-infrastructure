@@ -32,3 +32,6 @@
 [submodule "containers/kakao"]
 	path = containers/kakao
 	url = https://github.com/hyuabot-developers/hyuabot-kakao-i-server-golang
+[submodule "containers/backend/python"]
+	path = containers/backend/python
+	url = https://github.com/jil8885/hyuabot-backend-fastapi
