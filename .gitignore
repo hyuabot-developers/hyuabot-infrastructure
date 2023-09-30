@@ -8,3 +8,5 @@ database/.idea/
 database/initializer/.idea/
 
 *.pyc
+
+.DS_Store
