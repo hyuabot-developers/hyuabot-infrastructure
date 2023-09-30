@@ -123,18 +123,17 @@ create table if not exists shuttle_period(
 
 -- 셔틀버스 운행 시간표
 create table if not exists shuttle_timetable(
-    seq int primary key,
+    seq serial primary key,
     period_type varchar(20) not null,
     weekday boolean not null, -- 평일 여부
     route_name varchar(15) not null,
-    stop_name varchar(15) not null,
     departure_time timetz not null,
     constraint fk_period_type
         foreign key (period_type)
         references shuttle_period_type(period_type),
     constraint fk_route_name_stop
-        foreign key (route_name, stop_name)
-        references shuttle_route_stop(route_name, stop_name)
+        foreign key (route_name)
+        references shuttle_route(route_name)
 );
 
 -- 셔틀 임시 휴일
@@ -153,12 +152,13 @@ select
     shuttle_timetable.weekday,
     shuttle_timetable.route_name,
     shuttle_route.route_tag,
-    shuttle_timetable.stop_name,
+    shuttle_route_stop.stop_name,
     shuttle_timetable.departure_time + shuttle_route_stop.cumulative_time as departure_time
 from shuttle_timetable
 inner join shuttle_period_type on shuttle_period_type.period_type = shuttle_timetable.period_type
-inner join shuttle_route_stop on shuttle_timetable.route_name = shuttle_route_stop.route_name and shuttle_timetable.stop_name = shuttle_route_stop.stop_name
-inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name;
+inner join shuttle_route_stop on shuttle_route_stop.route_name = shuttle_timetable.route_name
+inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name
+order by shuttle_timetable.seq, shuttle_route_stop.stop_order;
 
 -- 셔틀 운행 시간표 뷰 업데이트 트리거
 create or replace function update_shuttle_timetable_view()
