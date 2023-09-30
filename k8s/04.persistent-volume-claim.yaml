@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: prod-postgresql-pv-claim
-  namespace: hyuabot-prod
+  namespace: hyuabot
 spec:
   resources:
     requests:

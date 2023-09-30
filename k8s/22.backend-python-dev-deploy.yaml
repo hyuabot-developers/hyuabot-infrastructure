@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hyuabot-api-python-development
-  namespace: hyuabot-prod
+  namespace: hyuabot
 spec:
   replicas: 1
   selector:
