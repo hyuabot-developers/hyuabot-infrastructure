@@ -1,5 +1,13 @@
 create schema if not exists public;
 
+-- 관리자 계정 테이블 삭제
+drop table if exists admin_user cascade;
+
+-- 공지사항 테이블 삭제
+drop table if exists notices cascade;
+drop table if exists notice_category cascade;
+
+-- 셔틀버스 테이블 삭제
 drop table if exists shuttle_period cascade;
 drop table if exists shuttle_timetable cascade;
 drop table if exists shuttle_period_type cascade;
@@ -7,23 +15,68 @@ drop table if exists shuttle_route_stop cascade;
 drop table if exists shuttle_route cascade;
 drop table if exists shuttle_stop cascade;
 drop table if exists shuttle_holiday cascade;
+
+-- 통학버스 테이블 삭제
 drop table if exists commute_shuttle_timetable cascade;
 drop table if exists commute_shuttle_route cascade;
 drop table if exists commute_shuttle_stop cascade;
+
+-- 버스 테이블 삭제
 drop table if exists bus_realtime cascade;
 drop table if exists bus_route_stop cascade;
 drop table if exists bus_timetable cascade;
 drop table if exists bus_route cascade;
 drop table if exists bus_stop cascade;
+
+-- 전철 테이블 삭제
 drop table if exists subway_realtime cascade;
 drop table if exists subway_timetable cascade;
 drop table if exists subway_route_station cascade;
 drop table if exists subway_station cascade;
 drop table if exists subway_route cascade;
+
+-- 학식 테이블 삭제
 drop table if exists menu cascade;
 drop table if exists restaurant cascade;
+
+-- 열람실 테이블 삭제
 drop table if exists reading_room cascade;
+
+-- 캠퍼스 테이블 삭제
 drop table if exists campus cascade;
+
+-- 관리자 계정 테이블
+create table if not exists admin_user (
+    user_id varchar(20) primary key,
+    password varchar(100) not null,
+    name varchar(20) not null,
+    email varchar(50) not null,
+    phone varchar(15) not null,
+    active boolean not null
+);
+
+-- 공지사항 카테고리 테이블
+create table if not exists notice_category (
+    category_id int primary key,
+    category_name varchar(20) not null
+);
+
+
+-- 공지사항 테이블
+create table if not exists notices (
+    notice_id int primary key,
+    title varchar(100) not null,
+    url varchar(200) not null,
+    expired_at timestamp,
+    category_id int not null,
+    user_id varchar(20) not null,
+    constraint fk_category_id
+        foreign key (category_id)
+        references notice_category(category_id),
+    constraint fk_user_id
+        foreign key (user_id)
+        references admin_user(user_id)
+);
 
 -- 셔틀버스 운행 기간 종류
 create table if not exists shuttle_period_type (
@@ -52,7 +105,7 @@ create table if not exists shuttle_route_stop (
     route_name varchar(15) references shuttle_route(route_name),
     stop_name varchar(15) references shuttle_stop(stop_name),
     stop_order int,
-    cumulative_time int,
+    cumulative_time interval not null,
     constraint pk_shuttle_route_stop primary key (route_name, stop_name)
 );
 
@@ -70,12 +123,12 @@ create table if not exists shuttle_period(
 
 -- 셔틀버스 운행 시간표
 create table if not exists shuttle_timetable(
+    seq int primary key,
     period_type varchar(20) not null,
     weekday boolean not null, -- 평일 여부
     route_name varchar(15) not null,
     stop_name varchar(15) not null,
     departure_time time not null,
-    constraint pk_shuttle_timetable primary key (period_type, weekday, route_name, stop_name, departure_time),
     constraint fk_period_type
         foreign key (period_type)
         references shuttle_period_type(period_type),
@@ -91,6 +144,42 @@ create table if not exists shuttle_holiday(
     calendar_type varchar(15) not null,
     constraint pk_shuttle_holiday primary key (holiday_date, holiday_type, calendar_type)
 );
+
+-- 셔틀 운행 시간표 뷰
+create materialized view if not exists shuttle_timetable_view as
+select
+    shuttle_timetable.seq,
+    shuttle_timetable.period_type,
+    shuttle_timetable.weekday,
+    shuttle_timetable.route_name,
+    shuttle_route.route_tag,
+    shuttle_timetable.stop_name,
+    shuttle_timetable.departure_time + shuttle_route_stop.cumulative_time as departure_time
+from shuttle_timetable
+inner join shuttle_period_type on shuttle_period_type.period_type = shuttle_timetable.period_type
+inner join shuttle_route_stop on shuttle_timetable.route_name = shuttle_route_stop.route_name and shuttle_timetable.stop_name = shuttle_route_stop.stop_name
+inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name;
+
+-- 셔틀 운행 시간표 뷰 업데이트 트리거
+create or replace function update_shuttle_timetable_view()
+returns trigger as $$
+begin
+    refresh materialized view shuttle_timetable_view;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger update_shuttle_timetable_view_timetable
+after insert or update or delete on shuttle_timetable
+for each row execute procedure update_shuttle_timetable_view();
+
+create trigger update_shuttle_timetable_view_route_stop
+after insert or update or delete on shuttle_route_stop
+for each row execute procedure update_shuttle_timetable_view();
+
+create trigger update_shuttle_timetable_view_route
+after insert or update or delete on shuttle_route
+for each row execute procedure update_shuttle_timetable_view();
 
 -- 통학버스 운행 노선
 create table if not exists commute_shuttle_route (
@@ -317,22 +406,22 @@ create table if not exists reading_room(
     total int not null, -- 열람실 총 좌석 수
     active_total int not null, -- 열람실 활성화된 좌석 수
     occupied int not null, -- 열람실 사용중인 좌석 수
-    available int not null, -- 열람실 사용 가능한 좌석 수
+    available int generated always as ( active_total - occupied ) stored , -- 열람실 사용 가능한 좌석 수
     last_updated_time timestamp not null, -- 마지막 업데이트 시간
     constraint fk_campus_id
         foreign key (campus_id)
         references campus(campus_id)
 );
 
-CREATE OR REPLACE FUNCTION update_time()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.last_updated_time = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- 열람실 좌석 갱신 트리거
+create or replace function update_reading_room()
+returns trigger as $$
+begin
+    new.last_updated_time = now();
+    return new;
+end;
+$$ language plpgsql;
 
-CREATE TRIGGER update_time_trigger
-BEFORE UPDATE ON reading_room
-FOR EACH ROW
-EXECUTE PROCEDURE update_time();
+create trigger update_reading_room
+before update on reading_room
+for each row execute procedure update_reading_room();
