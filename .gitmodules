@@ -1,6 +1,6 @@
 [submodule "containers/database"]
 	path = containers/database
-	url = https://github.com/hyuabot-developers/hyuabot-database-initializer
+	url = https://github.com/jil8885/hyuabot-database-initializer
 [submodule "containers/bus/realtime"]
 	path = containers/bus/realtime
 	url = https://github.com/hyuabot-developers/hyuabot-bus-realtime-updater
