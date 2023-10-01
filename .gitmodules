@@ -18,10 +18,7 @@
 	url = https://github.com/jil8885/hyuabot-library-updater
 [submodule "containers/cafeteria"]
 	path = containers/cafeteria
-	url = https://github.com/hyuabot-developers/hyuabot-cafeteria-updater
+	url = https://github.com/jil8885/hyuabot-cafeteria-updater
 [submodule "containers/shuttle"]
 	path = containers/shuttle
 	url = https://github.com/jil8885/hyuabot-shuttle-timetable-updater
-[submodule "containers/kakao"]
-	path = containers/kakao
-	url = https://github.com/hyuabot-developers/hyuabot-kakao-i-server-golang
