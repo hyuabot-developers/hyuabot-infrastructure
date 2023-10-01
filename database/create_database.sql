@@ -407,21 +407,8 @@ create table if not exists reading_room(
     active_total int not null, -- 열람실 활성화된 좌석 수
     occupied int not null, -- 열람실 사용중인 좌석 수
     available int generated always as ( active_total - occupied ) stored , -- 열람실 사용 가능한 좌석 수
-    last_updated_time timestamptz not null, -- 마지막 업데이트 시간
+    last_updated_time timestamptz, -- 마지막 업데이트 시간
     constraint fk_campus_id
         foreign key (campus_id)
         references campus(campus_id)
 );
-
--- 열람실 좌석 갱신 트리거
-create or replace function update_reading_room()
-returns trigger as $$
-begin
-    new.last_updated_time = now();
-    return new;
-end;
-$$ language plpgsql;
-
-create trigger update_reading_room
-before update on reading_room
-for each row execute procedure update_reading_room();
