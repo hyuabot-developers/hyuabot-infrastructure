@@ -19,19 +19,9 @@
 [submodule "containers/cafeteria"]
 	path = containers/cafeteria
 	url = https://github.com/hyuabot-developers/hyuabot-cafeteria-updater
-[submodule "containers/api"]
-	path = containers/api
-	url = https://github.com/hyuabot-developers/hyuabot-backend-golang
 [submodule "containers/shuttle"]
 	path = containers/shuttle
 	url = https://github.com/hyuabot-developers/hyuabot-shuttle-timetable-updater
-[submodule "web"]
-	path = web
-	url = https://github.com/hyuabot-developers/hyuabot-client-pwa
-	branch = gh-pages
 [submodule "containers/kakao"]
 	path = containers/kakao
 	url = https://github.com/hyuabot-developers/hyuabot-kakao-i-server-golang
-[submodule "containers/backend/python"]
-	path = containers/backend/python
-	url = https://github.com/jil8885/hyuabot-backend-fastapi
