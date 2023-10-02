@@ -39,5 +39,3 @@ spec:
                   name: secret
                   key: FIREBASE_TOKEN
           restartPolicy: OnFailure
-          nodeSelector:
-            kubernetes.io/hostname: personal-project-vm

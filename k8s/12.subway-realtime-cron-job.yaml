@@ -39,5 +39,3 @@ spec:
                   name: secret
                   key: METRO_API_KEY
           restartPolicy: OnFailure
-          nodeSelector:
-            kubernetes.io/hostname: personal-project-vm
