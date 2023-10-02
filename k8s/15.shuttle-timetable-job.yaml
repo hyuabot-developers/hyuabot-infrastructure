@@ -10,8 +10,7 @@ spec:
     spec:
       containers:
       - name: shuttle-timetable-job
-        image: hyuabot-shuttle-timetable-job-image
-        imagePullPolicy: Never
+        image: localhost:32000/hyuabot/hyuabot-shuttle-timetable-updater
         env:
           - name: POSTGRES_ID
             valueFrom:

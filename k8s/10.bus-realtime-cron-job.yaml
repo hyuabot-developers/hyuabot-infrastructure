@@ -11,8 +11,7 @@ spec:
         spec:
           containers:
           - name: bus-realtime-cron-job
-            image: hyuabot-bus-cron-job-image
-            imagePullPolicy: Never
+            image: localhost:32000/hyuabot/hyuabot-bus-realtime-updater
             env:
             - name: POSTGRES_ID
               valueFrom:

@@ -10,8 +10,7 @@ spec:
     spec:
       containers:
       - name: initialize-database
-        image: hyuabot-database-initialize
-        imagePullPolicy: Never
+        image: localhost:32000/hyuabot/hyuabot-database-initializer
         env:
           - name: POSTGRES_ID
             valueFrom:

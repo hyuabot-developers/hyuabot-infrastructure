@@ -11,8 +11,7 @@ spec:
         spec:
           containers:
           - name: reading-room-cron-job
-            image: hyuabot-reading-room-cron-job-image
-            imagePullPolicy: Never
+            image: localhost:32000/hyuabot/hyuabot-library-updater
             env:
             - name: POSTGRES_ID
               valueFrom:

@@ -11,8 +11,7 @@ spec:
         spec:
           containers:
           - name: subway-realtime-cron-job
-            image: hyuabot-subway-cron-job-image
-            imagePullPolicy: Never
+            image: localhost:32000/hyuabot/hyuabot-subway-realtime-updater
             env:
             - name: POSTGRES_ID
               valueFrom:
