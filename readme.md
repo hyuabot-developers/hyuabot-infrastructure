@@ -27,13 +27,15 @@
 
 | Directory | Description | Repository | CI/CD |
 | :---: | :---: | :---: | :---: |
-| containers/database | load initial data to the database. | [hyuabot-database-initializer](https://github.com/hyuabot-developers/hyuabot-database-initializer) | ![CI/CD](https://github.com/hyuabot-developers/hyuabot-database-initializer/actions/workflows/default.yml/badge.svg)
-| containers/bus/realtime | fetch realtime bus location | [hyuabot-bus-realtime-updater](https://github.com/hyuabot-developers/hyuabot-bus-realtime-updater) | ![CI/CD](https://github.com/hyuabot-developers/hyuabot-bus-realtime-updater/actions/workflows/default.yml/badge.svg)
-| containers/bus/timetable | fetch bus timetable | [hyuabot-bus-timetable-updater](https://github.com/hyuabot-developers/hyuabot-bus-timetable-updater) | ![CI/CD](https://github.com/hyuabot-developers/hyuabot-bus-timetable-updater/actions/workflows/default.yml/badge.svg)
-| containers/cafeteria | fetch cafeteria menu | [hyuabot-cafeteria-updater](https://github.com/hyuabot-developers/hyuabot-cafeteria-updater) | ![CI/CD](https://github.com/hyuabot-developers/hyuabot-cafeteria-updater/actions/workflows/default.yml/badge.svg)
-| containers/library | fetch reading room information | [hyuabot-library-updater](https://github.com/hyuabot-developers/hyuabot-library-updater) | ![CI/CD](https://github.com/hyuabot-developers/hyuabot-library-updater/actions/workflows/default.yml/badge.svg)
-| containers/subway/realtime | fetch realtime subway location | [hyuabot-subway-realtime-updater](https://github.com/hyuabot-developers/hyuabot-subway-realtime-updater) | ![CI/CD](https://github.com/hyuabot-developers/hyuabot-subway-realtime-updater/actions/workflows/default.yml/badge.svg)
-| containers/bus/timetable | fetch subway timetable | [hyuabot-subway-timetable-updater](https://github.com/hyuabot-developers/hyuabot-subway-timetable-updater) | ![CI/CD](https://github.com/hyuabot-developers/hyuabot-subway-timetable-updater/actions/workflows/default.yml/badge.svg)
+| containers/database | load initial data to the database. | [hyuabot-database-initializer](https://github.com/jil8885/hyuabot-database-initializer) | ![CI/CD](https://github.com/jil8885/hyuabot-database-initializer/actions/workflows/default.yml/badge.svg)
+| containers/bus/realtime | fetch realtime bus location | [hyuabot-bus-realtime-updater](https://github.com/jil8885/hyuabot-bus-realtime-updater) | ![CI/CD](https://github.com/jil8885/hyuabot-bus-realtime-updater/actions/workflows/default.yml/badge.svg)
+| containers/bus/timetable | fetch bus timetable | [hyuabot-bus-timetable-updater](https://github.com/jil8885/hyuabot-bus-timetable-updater) | ![CI/CD](https://github.com/jil8885/hyuabot-bus-timetable-updater/actions/workflows/default.yml/badge.svg)
+| containers/cafeteria | fetch cafeteria menu | [hyuabot-cafeteria-updater](https://github.com/jil8885/hyuabot-cafeteria-updater) | ![CI/CD](https://github.com/jil8885/hyuabot-cafeteria-updater/actions/workflows/default.yml/badge.svg)
+| containers/library | fetch reading room information | [hyuabot-library-updater](https://github.com/jil8885/hyuabot-library-updater) | ![CI/CD](https://github.com/jil8885/hyuabot-library-updater/actions/workflows/default.yml/badge.svg)
+| containers/subway/realtime | fetch realtime subway location | [hyuabot-subway-realtime-updater](https://github.com/jil8885/hyuabot-subway-realtime-updater) | ![CI/CD](https://github.com/jil8885/hyuabot-subway-realtime-updater/actions/workflows/default.yml/badge.svg)
+| containers/subway/timetable | fetch subway timetable | [hyuabot-subway-timetable-updater](https://github.com/jil8885/hyuabot-subway-timetable-updater) | ![CI/CD](https://github.com/jil8885/hyuabot-subway-timetable-updater/actions/workflows/default.yml/badge.svg)
+| containers/shuttle/timetable | fetch shuttle timetable | [hyuabot-shuttle-timetable-updater](https://github.com/jil8885/hyuabot-shuttle-timetable-updater) | ![CI/CD](https://github.com/jil8885/hyuabot-shuttle-timetable-updater/actions/workflows/default.yml/badge.svg)
+
 
 ### database
 - This directory contains the configuration file for the database.
