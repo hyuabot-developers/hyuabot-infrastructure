@@ -2,6 +2,7 @@ create schema if not exists public;
 
 -- 관리자 계정 테이블 삭제
 drop table if exists admin_user cascade;
+drop table if exists auth_refresh_token cascade;
 
 -- 공지사항 테이블 삭제
 drop table if exists notices cascade;
@@ -53,6 +54,18 @@ create table if not exists admin_user (
     email varchar(50) not null,
     phone varchar(15) not null,
     active boolean not null
+);
+
+create table if not exists auth_refresh_token (
+    uuid uuid primary key,
+    user_id varchar(20) not null,
+    refresh_token varchar(100) not null,
+    expired_at timestamptz not null,
+    created_at timestamptz not null,
+    updated_at timestamptz not null,
+    constraint fk_user_id
+        foreign key (user_id)
+        references admin_user(user_id)
 );
 
 -- 공지사항 카테고리 테이블
