@@ -49,7 +49,7 @@ drop table if exists campus cascade;
 -- 관리자 계정 테이블
 create table if not exists admin_user (
     user_id varchar(20) primary key,
-    password varchar(100) not null,
+    password bytea not null,
     name varchar(20) not null,
     email varchar(50) not null,
     phone varchar(15) not null,
@@ -70,14 +70,14 @@ create table if not exists auth_refresh_token (
 
 -- 공지사항 카테고리 테이블
 create table if not exists notice_category (
-    category_id int primary key,
+    category_id serial primary key,
     category_name varchar(20) not null
 );
 
 
 -- 공지사항 테이블
 create table if not exists notices (
-    notice_id int primary key,
+    notice_id serial primary key,
     title varchar(100) not null,
     url varchar(200) not null,
     expired_at timestamptz,
