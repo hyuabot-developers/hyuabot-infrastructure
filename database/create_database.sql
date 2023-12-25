@@ -434,10 +434,10 @@ create table if not exists reading_room(
 -- 건물 정보
 create table if not exists building(
     campus_id int not null, -- 캠퍼스 ID
-    id varchar(15) primary key, -- 건물 ID
-    name varchar(30) not null, -- 건물 이름
-    latitude double precision not null, -- 건물 위도
-    longitude double precision not null, -- 건물 경도
+    id varchar(15), -- 건물 ID
+    name varchar(30) primary key, -- 건물 이름
+    latitude double precision, -- 건물 위도
+    longitude double precision, -- 건물 경도
     url text, -- 건물 정보 URL
     constraint fk_campus_id
         foreign key (campus_id)
@@ -446,12 +446,10 @@ create table if not exists building(
 
 -- 건물 내부의 방 정보
 create table if not exists room(
-    building_id varchar(15) not null, -- 건물 ID
-    id int primary key, -- 방 ID
+    building_name varchar(30), -- 건물 이름
     name varchar(30) not null, -- 방 이름
-    floor varchar(10) not null, -- 방 층수
     number varchar(10) not null, -- 방 번호
     constraint fk_building_id
-        foreign key (building_id)
-        references building(id)
+        foreign key (building_name)
+        references building(name)
 );
