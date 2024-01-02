@@ -447,8 +447,8 @@ create table if not exists building(
 -- 건물 내부의 방 정보
 create table if not exists room(
     building_name varchar(30), -- 건물 이름
-    name varchar(30) not null, -- 방 이름
-    number varchar(10) not null, -- 방 번호
+    name varchar(100) not null, -- 방 이름
+    number varchar(30) not null, -- 방 번호
     constraint fk_building_id
         foreign key (building_name)
         references building(name)
