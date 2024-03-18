@@ -87,6 +87,7 @@ create table if not exists notices (
     expired_at timestamptz,
     category_id int not null,
     user_id varchar(20) not null,
+    language varchar(10) not null default 'korean',
     constraint fk_category_id
         foreign key (category_id)
         references notice_category(category_id),
