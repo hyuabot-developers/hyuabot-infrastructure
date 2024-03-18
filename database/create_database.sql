@@ -395,6 +395,9 @@ create table if not exists restaurant(
     restaurant_name varchar(50) not null, -- 식당 이름
     latitude double precision not null, -- 식당 위도
     longitude double precision not null, -- 식당 경도
+    breakfast_time varchar(40), -- 아침 식사 시간
+    lunch_time varchar(40), -- 점심 식사 시간
+    dinner_time varchar(40), -- 저녁 식사 시간
     constraint fk_campus_id
         foreign key (campus_id)
         references campus(campus_id)
