@@ -418,8 +418,8 @@ create table if not exists phonebook(
     phonebook_id serial primary key, -- 전화부 ID
     campus_id int not null, -- 캠퍼스 ID
     category_id int not null, -- 카테고리 ID
-    name varchar(30) not null, -- 이름
-    phone varchar(15) not null, -- 전화번호
+    name text not null, -- 이름
+    phone varchar(30) not null, -- 전화번호
     constraint fk_category_id
         foreign key (category_id)
         references phonebook_category(category_id),
