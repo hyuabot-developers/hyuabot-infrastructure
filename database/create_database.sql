@@ -24,6 +24,7 @@ drop table if exists commute_shuttle_stop cascade;
 
 -- 버스 테이블 삭제
 drop table if exists bus_realtime cascade;
+drop table if exists bus_departure_log cascade;
 drop table if exists bus_route_stop cascade;
 drop table if exists bus_timetable cascade;
 drop table if exists bus_route cascade;
@@ -307,6 +308,18 @@ create table if not exists bus_realtime(
     last_updated_time timestamptz not null, -- 마지막 업데이트 시간
     constraint pk_bus_realtime primary key (stop_id, route_id, arrival_sequence),
     constraint fk_bus_realtime_stop_id
+        foreign key (stop_id, route_id) references bus_route_stop(stop_id, route_id)
+);
+
+-- 버스 운행 이력
+create table if not exists bus_departure_log (
+    stop_id int not null, -- 정류장 ID
+    route_id int not null, -- 노선 ID
+    departure_date date not null, -- 출발 날짜
+    departure_time timetz not null, -- 출발 시간
+    vehicle_id varchar(20) not null, -- 차량 ID
+    constraint pk_bus_departure_log primary key (stop_id, route_id, departure_date, departure_time),
+    constraint fk_bus_departure_log_stop_id
         foreign key (stop_id, route_id) references bus_route_stop(stop_id, route_id)
 );
 
