@@ -134,39 +134,6 @@ spec:
         configMap:
           name: create-database
 ---
-# Initialize Database Job
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: initialize-database
-  namespace: hyuabot
-spec:
-  template:
-    metadata:
-      name: initialize-database
-    spec:
-      containers:
-      - name: initialize-database
-        image: localhost:5000/hyuabot-database-initializer
-        env:
-        - name: POSTGRES_ID
-          valueFrom:
-            secretKeyRef:
-              name: secret
-              key: DB_ID
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: secret
-              key: DB_PASSWORD
-        - name: POSTGRES_HOST
-          value: hyuabot-database
-        - name: POSTGRES_PORT
-          value: "5432"
-        - name: POSTGRES_DB
-          value: hyuabot
-      restartPolicy: Never
----
 # Redis Deployment
 apiVersion: apps/v1
 kind: Deployment
