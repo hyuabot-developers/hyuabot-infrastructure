@@ -185,7 +185,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: redis:latest-alpine
+        image: redis:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 6379
