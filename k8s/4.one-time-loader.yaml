@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: building-initialize
-        image: hyuabot-building-updater
+        image: localhost:5000/hyuabot-building-updater
         env:
         - name: POSTGRES_ID
           valueFrom:
@@ -44,7 +44,7 @@ spec:
     spec:
       containers:
       - name: bus-timetable-initialize
-        image: hyuabot-bus-timetable-updater
+        image: localhost:5000/hyuabot-bus-timetable-updater
         env:
         - name: POSTGRES_ID
           valueFrom:
@@ -77,7 +77,7 @@ spec:
     spec:
       containers:
       - name: subway-timetable-initialize
-        image: hyuabot-subway-timetable-updater
+        image: localhost:5000/hyuabot-subway-timetable-updater
         env:
         - name: POSTGRES_ID
           valueFrom:
@@ -110,7 +110,7 @@ spec:
     spec:
       containers:
       - name: shuttle-timetable-initialize
-        image: hyuabot-shuttle-timetable-updater
+        image: localhost:5000/hyuabot-shuttle-timetable-updater
         env:
         - name: POSTGRES_ID
           valueFrom:

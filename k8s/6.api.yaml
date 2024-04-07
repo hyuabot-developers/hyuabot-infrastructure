@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: hyuabot-api-server-python
+        image: localhost:5000/hyuabot-api-server-python
         ports:
         - containerPort: 3000
         env:

@@ -147,7 +147,7 @@ spec:
     spec:
       containers:
       - name: initialize-database
-        image: hyuabot-database-initializer
+        image: localhost:5000/hyuabot-database-initializer
         env:
         - name: POSTGRES_ID
           valueFrom:
