@@ -1,24 +1,28 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: hyuabot-api
-  namespace: hyuabot
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: hyuabot-api
-  template:
-    metadata:
-      labels:
+apiVersion: v1
+kind: Template
+objects:
+# Deploy API Server
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: hyuabot-api
+    namespace: hyuabot
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
         app: hyuabot-api
-    spec:
-      containers:
-      - name: api
-        image: localhost:32000/hyuabot/hyuabot-api-server-python
-        ports:
-        - containerPort: 3000
-        env:
+    template:
+      metadata:
+        labels:
+          app: hyuabot-api
+      spec:
+        containers:
+        - name: api
+          image: hyuabot-api-server-python
+          ports:
+          - containerPort: 3000
+          env:
           - name: DATABASE_URL
             valueFrom:
               secretKeyRef:
@@ -63,3 +67,18 @@ spec:
               secretKeyRef:
                 name: secret
                 key: JWT_SECRET
+# Expose API Server
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: hyuabot-api
+    namespace: hyuabot
+    labels:
+      app: hyuabot-api
+  spec:
+    type: NodePort
+    ports:
+    - port: 38000
+      nodePort: 30001
+    selector:
+      app: hyuabot-api
