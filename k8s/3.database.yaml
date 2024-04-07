@@ -20,13 +20,13 @@ kind: PersistentVolumeClaim
 metadata:
   name: postgres-pv-claim
   namespace: hyuabot
-  spec:
-    accessModes:
-    - ReadWriteOnce
-    resources:
-      requests:
-        storage: 5Gi
-    storageClassName: postgres-pv-storage
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: postgres-pv-storage
 ---
 # Deployment for database
 apiVersion: apps/v1
@@ -92,17 +92,9 @@ spec:
   type: NodePort
   ports:
   - port: 5432
-    nodePort: 35432
+    nodePort: 30432
   selector:
     app: hyuabot-database
----
-# Create configMap for database from create_database.sql
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-configMapGenerator:
-- name: create-database
-  files:
-  - ../database/create_database.sql
 ---
 # Migration Job
 apiVersion: batch/v1
