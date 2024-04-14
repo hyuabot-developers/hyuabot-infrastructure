@@ -40,7 +40,7 @@ metadata:
 spec:
   type: NodePort
   ports:
-  - port: 38000
+  - port: 38001
     nodePort: 30002
   selector:
     app: hyuabot-chat-api
