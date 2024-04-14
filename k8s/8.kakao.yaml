@@ -1,0 +1,46 @@
+# Deploy API Server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyuabot-chat-api
+  namespace: hyuabot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyuabot-chat-api
+  template:
+    metadata:
+      labels:
+        app: hyuabot-chat-api
+    spec:
+      containers:
+      - name: api
+        image: localhost:5000/hyuabot-kakao-server-python
+        ports:
+        - containerPort: 3000
+        env:
+        - name: SITE_DOMAIN
+          value: 'https://chat.hyuabot.app'
+        - name: API_URL
+          value: 'https://api.hyuabot.app'
+        - name: CORS_ORIGINS
+          value: '["http://localhost:3000", "https://*.hyuabot.app"]'
+        - name: CORS_HEADERS
+          value: '["*"]'
+---
+# Expose API Server
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyuabot-chat-api
+  namespace: hyuabot
+  labels:
+    app: hyuabot-chat-api
+spec:
+  type: NodePort
+  ports:
+  - port: 38000
+    nodePort: 30002
+  selector:
+    app: hyuabot-chat-api
