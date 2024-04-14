@@ -10,3 +10,5 @@ database/initializer/.idea/
 *.pyc
 
 .DS_Store
+
+.idea/

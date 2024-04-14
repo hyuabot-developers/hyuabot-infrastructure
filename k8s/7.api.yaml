@@ -1,0 +1,82 @@
+# Deploy API Server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyuabot-api
+  namespace: hyuabot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyuabot-api
+  template:
+    metadata:
+      labels:
+        app: hyuabot-api
+    spec:
+      containers:
+      - name: api
+        image: localhost:5000/hyuabot-api-server-python
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: REDIS_URL
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: POSTGRES_DB
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: POSTGRES_HOST
+        - name: POSTGRES_PORT
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: POSTGRES_PORT
+        - name: CORS_ORIGINS
+          value: '["http://localhost:3000", "https://*.hyuabot.app"]'
+        - name: CORS_HEADERS
+          value: '["*"]'
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: JWT_SECRET
+---
+# Expose API Server
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyuabot-api
+  namespace: hyuabot
+  labels:
+    app: hyuabot-api
+spec:
+  type: NodePort
+  ports:
+  - port: 38000
+    nodePort: 30001
+  selector:
+    app: hyuabot-api
