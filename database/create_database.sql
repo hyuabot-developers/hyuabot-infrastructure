@@ -284,6 +284,7 @@ create table if not exists bus_route_stop (
     stop_id int not null,
     stop_sequence int not null,
     start_stop_id int not null,
+    minute_from_start int,
     constraint pk_bus_route_stop primary key (route_id, stop_id),
     constraint fk_route_id
         foreign key (route_id)
