@@ -137,11 +137,11 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
-            - name: FIREBASE_TOKEN
+            - name: GOOGLE_PROJECT_ID
               valueFrom:
                 secretKeyRef:
                   name: secret
-                  key: FIREBASE_TOKEN
+                  key: GOOGLE_PROJECT_ID
           restartPolicy: OnFailure
 ---
 # Cafeteria Menu Loader
