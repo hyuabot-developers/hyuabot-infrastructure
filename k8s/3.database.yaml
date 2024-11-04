@@ -50,7 +50,7 @@ spec:
           claimName: postgres-pv-claim
       containers:
       - name: database
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5432
@@ -109,7 +109,7 @@ spec:
     spec:
       containers:
       - name: migration-database
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         command: ["sh", "-c", "export PGPASSWORD=$POSTGRES_PASSWORD; psql -h hyuabot-database -U $POSTGRES_USER -d $POSTGRES_DB -f /scripts/create_database.sql"]
         volumeMounts:
         - name: migration-script
