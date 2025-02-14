@@ -56,7 +56,7 @@ spec:
               name: secret
               key: POSTGRES_PORT
         - name: CORS_ORIGINS
-          value: '["http://localhost:3000", "https://api.hyuabot.app", "https://map.hyuabot.app", "https://api.hyuabot.app/", "https://map.hyuabot.app/"]'
+          value: '["http://localhost:3000", "https://api.hyuabot.app", "https://map.hyuabot.app", "https://api.hyuabot.app/", "https://map.hyuabot.app/", "https://admin.hyuabot.app"]'
         - name: CORS_HEADERS
           value: '["*"]'
         - name: JWT_SECRET_KEY
