@@ -183,7 +183,28 @@ select
     shuttle_timetable.route_name,
     shuttle_route.route_tag,
     shuttle_route_stop.stop_name,
-    shuttle_timetable.departure_time + shuttle_route_stop.cumulative_time as departure_time
+    shuttle_timetable.departure_time + shuttle_route_stop.cumulative_time as departure_time,
+    case
+        when shuttle_route_stop.stop_name = 'dormitory_o' then
+            case
+                when shuttle_route.route_tag in ('DH', 'DJ', 'C') then 'STATION'
+                when shuttle_route.route_tag in ('DY', 'C') then 'TERMINAL'
+                when shuttle_route.route_tag = 'DJ' then 'JUNGANG'
+            end
+        when shuttle_route_stop.stop_name = 'shuttlecock_o' then
+            case
+                when shuttle_route.route_tag in ('DH', 'DJ', 'C') then 'STATION'
+                when shuttle_route.route_tag in ('DY', 'C') then 'TERMINAL'
+                when shuttle_route.route_tag = 'DJ' then 'JUNGANG'
+            end
+        when shuttle_route_stop.stop_name = 'station' then
+            case
+                when shuttle_route.route_tag in ('DH', 'DJ', 'C') then 'CAMPUS'
+                when shuttle_route.route_tag = 'C' then 'TERMINAL'
+                when shuttle_route.route_tag = 'DJ' then 'JUNGANG'
+            end
+        when shuttle_route_stop.stop_name in ('terminal', 'jungang_stn', 'shuttlecock_i', 'dormitory_i') then 'CAMPUS'
+    END AS destination_group
 from shuttle_timetable
 inner join shuttle_period_type on shuttle_period_type.period_type = shuttle_timetable.period_type
 inner join shuttle_route_stop on shuttle_route_stop.route_name = shuttle_timetable.route_name
