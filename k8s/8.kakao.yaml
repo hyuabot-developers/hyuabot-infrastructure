@@ -18,7 +18,7 @@ spec:
       - name: api
         image: localhost:5000/hyuabot-kakao-backend-go
         ports:
-        - containerPort: 3000
+        - containerPort: 38001
         env:
         - name: SITE_DOMAIN
           value: 'https://chat.hyuabot.app'
