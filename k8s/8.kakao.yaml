@@ -16,14 +16,14 @@ spec:
     spec:
       containers:
       - name: api
-        image: localhost:5000/hyuabot-kakao-server-python
+        image: localhost:5000/hyuabot-kakao-backend-go
         ports:
         - containerPort: 3000
         env:
         - name: SITE_DOMAIN
           value: 'https://chat.hyuabot.app'
         - name: API_URL
-          value: 'https://api.hyuabot.app'
+          value: 'api.hyuabot.app'
         - name: CORS_ORIGINS
           value: '["http://localhost:3000", "https://*.hyuabot.app"]'
         - name: CORS_HEADERS

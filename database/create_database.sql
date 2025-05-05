@@ -211,6 +211,77 @@ inner join shuttle_route_stop on shuttle_route_stop.route_name = shuttle_timetab
 inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name
 order by shuttle_timetable.seq, shuttle_route_stop.stop_order;
 
+create materialized view if not exists shuttle_timetable_grouped_view as
+    -- Normal routes: STATION
+    select
+        shuttle_timetable.seq,
+        shuttle_timetable.period_type,
+        shuttle_timetable.weekday,
+        shuttle_timetable.route_name,
+        shuttle_route.route_tag,
+        shuttle_route_stop.stop_name,
+        shuttle_timetable.departure_time + shuttle_route_stop.cumulative_time as departure_time,
+        'STATION' as destination_group
+    from shuttle_timetable
+    inner join shuttle_period_type on shuttle_period_type.period_type = shuttle_timetable.period_type
+    inner join shuttle_route_stop on shuttle_route_stop.route_name = shuttle_timetable.route_name
+    inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name
+    where shuttle_route_stop.stop_name in ('dormitory_o', 'shuttlecock_o') and shuttle_route.route_tag in ('DH', 'DJ', 'C')
+
+    UNION ALL
+
+    -- Normal routes: TERMINAL
+    select
+        shuttle_timetable.seq,
+        shuttle_timetable.period_type,
+        shuttle_timetable.weekday,
+        shuttle_timetable.route_name,
+        shuttle_route.route_tag,
+        shuttle_route_stop.stop_name,
+        shuttle_timetable.departure_time + shuttle_route_stop.cumulative_time as departure_time,
+        'TERMINAL' as destination_group
+    from shuttle_timetable
+    inner join shuttle_period_type on shuttle_period_type.period_type = shuttle_timetable.period_type
+    inner join shuttle_route_stop on shuttle_route_stop.route_name = shuttle_timetable.route_name
+    inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name
+    where shuttle_route_stop.stop_name in ('station', 'dormitory_o', 'shuttlecock_o') and shuttle_route.route_tag in ('DY', 'C')
+
+    UNION ALL
+
+    -- Campus returns
+    select
+        shuttle_timetable.seq,
+        shuttle_timetable.period_type,
+        shuttle_timetable.weekday,
+        shuttle_timetable.route_name,
+        shuttle_route.route_tag,
+        shuttle_route_stop.stop_name,
+        shuttle_timetable.departure_time + shuttle_route_stop.cumulative_time as departure_time,
+        'CAMPUS' as destination_group
+    from shuttle_timetable
+    inner join shuttle_period_type on shuttle_period_type.period_type = shuttle_timetable.period_type
+    inner join shuttle_route_stop on shuttle_route_stop.route_name = shuttle_timetable.route_name
+    inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name
+    where shuttle_route_stop.stop_name in ('station', 'terminal', 'jungang_stn', 'shuttlecock_i', 'dormitory_i')
+
+    UNION ALL
+
+    -- Jungang station
+    select
+        shuttle_timetable.seq,
+        shuttle_timetable.period_type,
+        shuttle_timetable.weekday,
+        shuttle_timetable.route_name,
+        shuttle_route.route_tag,
+        shuttle_route_stop.stop_name,
+        shuttle_timetable.departure_time + shuttle_route_stop.cumulative_time as departure_time,
+        'JUNGANG' as destination_group
+    from shuttle_timetable
+    inner join shuttle_period_type on shuttle_period_type.period_type = shuttle_timetable.period_type
+    inner join shuttle_route_stop on shuttle_route_stop.route_name = shuttle_timetable.route_name
+    inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name
+    where shuttle_route_stop.stop_name in ('dormitory_o', 'shuttlecock_o', 'station') and shuttle_route.route_tag = 'DJ'
+
 -- 셔틀 운행 시간표 뷰 업데이트 트리거
 create or replace function update_shuttle_timetable_view()
 returns trigger as $$
