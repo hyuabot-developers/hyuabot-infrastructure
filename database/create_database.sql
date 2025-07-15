@@ -1,5 +1,17 @@
 create schema if not exists public;
 
+-- 인덱스 삭제
+drop index if exists idx_shuttle_route_stop;
+drop index if exists idx_shuttle_period_type;
+drop index if exists idx_shuttle_holiday_date;
+drop index if exists idx_commute_shuttle_timetable;
+drop index if exists idx_bus_route_stop;
+drop index if exists idx_bus_departure_log;
+drop index if exists idx_bus_timetable;
+drop index if exists idx_subway_timetable;
+drop index if exists idx_menu;
+
+
 -- 관리자 계정 테이블 삭제
 drop table if exists admin_user cascade;
 drop table if exists auth_refresh_token cascade;
@@ -132,24 +144,29 @@ create table if not exists shuttle_route (
 
 -- 셔틀버스 노선별 정류장 순서
 create table if not exists shuttle_route_stop (
+    seq serial primary key,
     route_name varchar(15) references shuttle_route(route_name),
     stop_name varchar(15) references shuttle_stop(stop_name),
     stop_order int,
-    cumulative_time interval not null,
-    constraint pk_shuttle_route_stop primary key (route_name, stop_name)
+    cumulative_time interval not null
 );
+
+-- 셔틀버스 노선별 정류장 인덱스
+create index if not exists idx_shuttle_route_stop on shuttle_route_stop(route_name, stop_order);
 
 -- 셔틀버스 운행 기간 (학기중, 계절학기, 방학)
 create table if not exists shuttle_period(
     -- 셔틀버스 운행 기간 ID
+    seq serial primary key,
     period_type varchar(20) not null,
     period_start timestamptz not null,
     period_end timestamptz not null,
-    constraint pk_shuttle_period primary key (period_type, period_start, period_end),
     constraint fk_period_type
         foreign key (period_type)
         references shuttle_period_type(period_type)
 );
+-- 셔틀버스 운행 기간 인덱스
+create index if not exists idx_shuttle_period_type on shuttle_period(period_type, period_start, period_end);
 
 -- 셔틀버스 운행 시간표
 create table if not exists shuttle_timetable(
@@ -168,11 +185,13 @@ create table if not exists shuttle_timetable(
 
 -- 셔틀 임시 휴일
 create table if not exists shuttle_holiday(
+    seq serial primary key,
     holiday_date date not null,
     holiday_type varchar(15) not null,
-    calendar_type varchar(15) not null,
-    constraint pk_shuttle_holiday primary key (holiday_date, holiday_type, calendar_type)
+    calendar_type varchar(15) not null
 );
+-- 셔틀 임시 휴일 인덱스
+create index if not exists idx_shuttle_holiday_date on shuttle_holiday(holiday_date, holiday_type, calendar_type);
 
 -- 셔틀 운행 시간표 뷰
 create materialized view if not exists shuttle_timetable_view as
@@ -280,7 +299,7 @@ create materialized view if not exists shuttle_timetable_grouped_view as
     inner join shuttle_period_type on shuttle_period_type.period_type = shuttle_timetable.period_type
     inner join shuttle_route_stop on shuttle_route_stop.route_name = shuttle_timetable.route_name
     inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name
-    where shuttle_route_stop.stop_name in ('dormitory_o', 'shuttlecock_o', 'station') and shuttle_route.route_tag = 'DJ'
+    where shuttle_route_stop.stop_name in ('dormitory_o', 'shuttlecock_o', 'station') and shuttle_route.route_tag = 'DJ';
 
 -- 셔틀 운행 시간표 뷰 업데이트 트리거
 create or replace function update_shuttle_timetable_view()
@@ -320,12 +339,15 @@ create table if not exists commute_shuttle_stop (
 
 -- 통학버스 노선별 정류장 순서
 create table if not exists commute_shuttle_timetable (
+    seq serial primary key,
     route_name varchar(15) references commute_shuttle_route(route_name),
     stop_name varchar(50) references commute_shuttle_stop(stop_name),
     stop_order int,
-    departure_time time not null,
-    constraint pk_commute_shuttle_route_stop primary key (route_name, stop_name)
+    departure_time time not null
 );
+
+-- 통학버스 노선별 정류장 인덱스
+create index if not exists idx_commute_shuttle_timetable on commute_shuttle_timetable(route_name, stop_order);
 
 -- 버스 정류장
 create table if not exists bus_stop (
@@ -372,12 +394,12 @@ create table if not exists bus_route (
 
 -- 각 노선별 경유 정류장 목록 조회
 create table if not exists bus_route_stop (
+    seq serial primary key,
     route_id int not null,
     stop_id int not null,
-    stop_sequence int not null,
+    stop_seq int not null,
     start_stop_id int not null,
     minute_from_start int,
-    constraint pk_bus_route_stop primary key (route_id, stop_id),
     constraint fk_route_id
         foreign key (route_id)
         references bus_route(route_id),
@@ -386,43 +408,51 @@ create table if not exists bus_route_stop (
         references bus_stop(stop_id),
     constraint fk_start_stop_id
         foreign key (start_stop_id)
-        references bus_stop(stop_id)
+        references bus_stop(stop_id),
+    constraint unique_route_stop_seq
+        unique (route_id, stop_id)
 );
+
+-- 버스 노선별 정류장 인덱스
+create index if not exists idx_bus_route_stop on bus_route_stop(route_id, stop_id);
 
 -- 버스 실시간 운행 정보
 create table if not exists bus_realtime(
     stop_id int not null, -- 정류장 ID
     route_id int not null, -- 노선 ID
-    arrival_sequence int not null, -- 도착 순서
+    arrival_seq int not null, -- 도착 순서
     remaining_stop_count int not null, -- 남은 정류장 수
     remaining_seat_count int not null, -- 남은 좌석 수
     remaining_time interval not null, -- 남은 시간
     low_plate boolean not null, -- 저상 버스 여부,
     last_updated_time timestamptz not null, -- 마지막 업데이트 시간
-    constraint pk_bus_realtime primary key (stop_id, route_id, arrival_sequence),
+    constraint pk_bus_realtime primary key (stop_id, route_id, arrival_seq),
     constraint fk_bus_realtime_stop_id
         foreign key (stop_id, route_id) references bus_route_stop(stop_id, route_id)
 );
 
 -- 버스 운행 이력
 create table if not exists bus_departure_log (
+    seq serial primary key, -- 이력 ID
     stop_id int not null, -- 정류장 ID
     route_id int not null, -- 노선 ID
     departure_date date not null, -- 출발 날짜
     departure_time time not null, -- 출발 시간
     vehicle_id varchar(20) not null, -- 차량 ID
-    constraint pk_bus_departure_log primary key (stop_id, route_id, departure_date, departure_time),
     constraint fk_bus_departure_log_stop_id
         foreign key (stop_id, route_id) references bus_route_stop(stop_id, route_id)
 );
 
+-- 버스 운행 인덱스
+create index if not exists idx_bus_departure_log on bus_departure_log(stop_id, route_id, departure_date, departure_time);
+
 -- 버스 회차지 출발 시간표
 create table if not exists bus_timetable(
+    seq serial primary key, -- 시간표 ID
     route_id int not null, -- 노선 ID
     start_stop_id int not null, -- 기점 정류장 ID
     departure_time time not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
-    constraint pk_bus_timetable primary key (route_id, start_stop_id, departure_time, weekday),
     constraint fk_route_id
         foreign key (route_id)
         references bus_route(route_id),
@@ -430,6 +460,9 @@ create table if not exists bus_timetable(
         foreign key (start_stop_id)
         references bus_stop(stop_id)
 );
+
+-- 버스 운행 시간표 인덱스
+create index if not exists idx_bus_timetable on bus_timetable(route_id, start_stop_id, departure_time, weekday);
 
 -- 전철역 정보
 create table if not exists subway_station(
@@ -447,7 +480,7 @@ create table if not exists subway_route_station(
     station_id varchar(10) primary key, -- 역 ID
     route_id int not null, -- 노선 ID
     station_name varchar(30) not null,-- 역 이름
-    station_sequence int not null, -- 역 순서
+    station_seq int not null, -- 역 순서
     cumulative_time interval not null, -- 누적 시간
     constraint fk_route_id
         foreign key (route_id)
@@ -460,7 +493,7 @@ create table if not exists subway_route_station(
 -- 전철 실시간 운행 정보
 create table if not exists subway_realtime(
     station_id varchar(10) not null, -- 역 ID
-    arrival_sequence int not null, -- 도착 순서
+    arrival_seq int not null, -- 도착 순서
     current_station_name varchar(30) not null, -- 현재 역 이름
     remaining_stop_count int not null, -- 남은 정류장 수
     remaining_time interval not null, -- 남은 시간
@@ -471,7 +504,7 @@ create table if not exists subway_realtime(
     is_express_train boolean not null, -- 급행 여부
     is_last_train boolean not null, -- 막차 여부
     status_code int not null, -- 상태 코드
-    constraint pk_subway_realtime primary key (station_id, up_down_type, arrival_sequence),
+    constraint pk_subway_realtime primary key (station_id, up_down_type, arrival_seq),
     constraint fk_station_id
         foreign key (station_id)
         references subway_route_station(station_id),
@@ -482,13 +515,13 @@ create table if not exists subway_realtime(
 
 -- 전철 시간표
 create table if not exists subway_timetable(
+    seq serial primary key, -- 시간표 ID
     station_id varchar(10) not null, -- 역 ID
     start_station_id varchar(10) not null, -- 출발역 ID
     terminal_station_id varchar(10) not null, -- 종착역 ID
     departure_time time not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
     up_down_type varchar(10) not null, -- 상행, 하행 여부
-    constraint pk_subway_timetable primary key (station_id, up_down_type, weekday, departure_time),
     constraint fk_station_id
         foreign key (station_id)
         references subway_route_station(station_id),
@@ -499,6 +532,9 @@ create table if not exists subway_timetable(
         foreign key (terminal_station_id)
         references subway_route_station(station_id)
 );
+
+-- 전철 시간표 인덱스
+create index if not exists idx_subway_timetable on subway_timetable(station_id, up_down_type, weekday, departure_time);
 
 -- 캠퍼스
 create table if not exists campus(
@@ -578,16 +614,19 @@ create table if not exists restaurant(
 
 -- 학식 메뉴
 create table if not exists menu(
+    seq serial primary key, -- 메뉴 ID
     restaurant_id int not null, -- 식당 ID
     feed_date date not null, -- 급식 날짜,
     time_type varchar(10) not null, -- 시간 타입 (아침, 점심, 저녁)
     menu_food varchar(400) not null, -- 메뉴 이름
     menu_price varchar(30) not null, -- 메뉴 가격
-    constraint pk_menu primary key (restaurant_id, feed_date, time_type, menu_food),
     constraint fk_restaurant_id
         foreign key (restaurant_id)
         references restaurant(restaurant_id)
 );
+
+-- 학식 메뉴 인덱스
+create index if not exists idx_menu on menu(restaurant_id, feed_date, time_type, menu_food, menu_price);
 
 -- 열람실 정보
 create table if not exists reading_room(
@@ -622,6 +661,7 @@ create table if not exists building(
 
 -- 건물 내부의 방 정보
 create table if not exists room(
+    seq serial primary key, -- 방 ID
     building_name varchar(30), -- 건물 이름
     name varchar(100) not null, -- 방 이름
     number varchar(30) not null, -- 방 번호
@@ -629,3 +669,5 @@ create table if not exists room(
         foreign key (building_name)
         references building(name)
 );
+
+create index if not exists idx_room_building_name on room(building_name, number);
