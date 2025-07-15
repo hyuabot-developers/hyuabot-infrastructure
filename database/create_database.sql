@@ -157,7 +157,7 @@ create table if not exists shuttle_timetable(
     period_type varchar(20) not null,
     weekday boolean not null, -- 평일 여부
     route_name varchar(15) not null,
-    departure_time timetz not null,
+    departure_time time not null,
     constraint fk_period_type
         foreign key (period_type)
         references shuttle_period_type(period_type),
@@ -323,7 +323,7 @@ create table if not exists commute_shuttle_timetable (
     route_name varchar(15) references commute_shuttle_route(route_name),
     stop_name varchar(50) references commute_shuttle_stop(stop_name),
     stop_order int,
-    departure_time timetz not null,
+    departure_time time not null,
     constraint pk_commute_shuttle_route_stop primary key (route_name, stop_name)
 );
 
@@ -347,11 +347,11 @@ create table if not exists bus_route (
     -- 관리 기관 정보
     district_code int not null,
     -- 평일 기점 → 종점 방면 첫차, 막차
-    up_first_time timetz not null,
-    up_last_time timetz not null,
+    up_first_time time not null,
+    up_last_time time not null,
     -- 평일 종점 → 기점 방면 첫차, 막차
-    down_first_time timetz not null,
-    down_last_time timetz not null,
+    down_first_time time not null,
+    down_last_time time not null,
     -- 기점 정류소
     start_stop_id int not null,
     -- 종점 정류소
@@ -409,7 +409,7 @@ create table if not exists bus_departure_log (
     stop_id int not null, -- 정류장 ID
     route_id int not null, -- 노선 ID
     departure_date date not null, -- 출발 날짜
-    departure_time timetz not null, -- 출발 시간
+    departure_time time not null, -- 출발 시간
     vehicle_id varchar(20) not null, -- 차량 ID
     constraint pk_bus_departure_log primary key (stop_id, route_id, departure_date, departure_time),
     constraint fk_bus_departure_log_stop_id
@@ -420,7 +420,7 @@ create table if not exists bus_departure_log (
 create table if not exists bus_timetable(
     route_id int not null, -- 노선 ID
     start_stop_id int not null, -- 기점 정류장 ID
-    departure_time timetz not null, -- 출발 시간
+    departure_time time not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
     constraint pk_bus_timetable primary key (route_id, start_stop_id, departure_time, weekday),
     constraint fk_route_id
@@ -485,7 +485,7 @@ create table if not exists subway_timetable(
     station_id varchar(10) not null, -- 역 ID
     start_station_id varchar(10) not null, -- 출발역 ID
     terminal_station_id varchar(10) not null, -- 종착역 ID
-    departure_time timetz not null, -- 출발 시간
+    departure_time time not null, -- 출발 시간
     weekday varchar(10) not null, -- 평일, 토요일, 일요일 여부
     up_down_type varchar(10) not null, -- 상행, 하행 여부
     constraint pk_subway_timetable primary key (station_id, up_down_type, weekday, departure_time),
