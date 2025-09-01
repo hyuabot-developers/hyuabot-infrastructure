@@ -538,7 +538,7 @@ create index if not exists idx_subway_timetable on subway_timetable(station_id, 
 
 -- 캠퍼스
 create table if not exists campus(
-    campus_id int primary key, -- 캠퍼스 ID
+    campus_id serial primary key, -- 캠퍼스 ID
     campus_name varchar(30) not null -- 캠퍼스 이름
 );
 
