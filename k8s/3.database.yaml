@@ -167,3 +167,19 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "500m"
+---
+# Service for Redis
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyuabot-redis
+  namespace: hyuabot
+  labels:
+    app: hyuabot-redis
+spec:
+  type: NodePort
+  ports:
+    - port: 6379
+      nodePort: 30379
+  selector:
+    app: hyuabot-redis
