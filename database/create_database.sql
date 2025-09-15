@@ -87,7 +87,7 @@ create table if not exists admin_user (
 create table if not exists auth_refresh_token (
     uuid uuid primary key,
     user_id varchar(20) not null,
-    refresh_token varchar(100) not null,
+    refresh_token text not null,
     expired_at timestamptz not null,
     created_at timestamptz not null,
     updated_at timestamptz not null,
