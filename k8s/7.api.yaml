@@ -50,7 +50,7 @@ spec:
     secretName: hyuabot-tls
   rules:
   - host: backend.hyuabot.app
-  - http:
+    http:
       paths:
       - path: /
         pathType: Prefix
