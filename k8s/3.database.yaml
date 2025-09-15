@@ -107,6 +107,10 @@ spec:
     metadata:
       name: migration-database
     spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox
+          command: ['sh', '-c', 'until nc -z hyuabot-database 5432; do echo waiting for database; sleep 2; done;']
       containers:
       - name: migration-database
         image: postgres:17-alpine
