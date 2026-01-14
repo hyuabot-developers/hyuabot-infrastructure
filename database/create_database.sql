@@ -1,3 +1,11 @@
+-- 데이터베이스 및 스키마 생성 스크립트
+SELECT pg_terminate_backend(pg_stat_activity.pid)
+FROM pg_stat_activity
+WHERE pg_stat_activity.datname = 'hyuabot';
+drop database if exists hyuabot;
+create database hyuabot;
+\c hyuabot;
+
 create schema if not exists public;
 
 -- 인덱스 삭제
