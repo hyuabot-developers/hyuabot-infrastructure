@@ -27,9 +27,10 @@ metadata:
   name: hyuabot-backend-kotlin-service
   namespace: hyuabot
 spec:
+  type: NodePort
   selector:
     app: hyuabot-backend-kotlin
   ports:
-  - protocol: TCP
-    port: 8080
+  - port: 80
     targetPort: 8080
+    nodePort: 30080
