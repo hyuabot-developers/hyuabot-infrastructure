@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: localhost:32000/hyuabot-backend-kotlin:latest
+        image: localhost:5000/hyuabot-backend-kotlin:latest
         ports:
         - containerPort: 8080
 ---
@@ -33,29 +33,3 @@ spec:
   - protocol: TCP
     port: 8080
     targetPort: 8080
----
-# Ingress for API Server
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: hyuabot-backend-kotlin-ingress
-  namespace: hyuabot
-  annotations:
-    cert-manager.io/cluster-issuer: lets-encrypt
-spec:
-  ingressClassName: nginx
-  tls:
-  - hosts:
-    - backend.hyuabot.app
-    secretName: hyuabot-tls
-  rules:
-  - host: backend.hyuabot.app
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: hyuabot-backend-kotlin-service
-            port:
-              number: 8080
