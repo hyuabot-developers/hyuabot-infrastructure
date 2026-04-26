@@ -190,9 +190,9 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
-            - name: BUS_API_KEY
+            - name: WEATHER_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: secret
-                  key: BUS_API_KEY
+                  key: WEATHER_API_KEY
           restartPolicy: OnFailure
