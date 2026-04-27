@@ -203,10 +203,12 @@ spec:
   schedule: "20 * * * *"
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
+  concurrencyPolicy: Replace
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 300
-      activeDeadlineSeconds: 600
+      activeDeadlineSeconds: 120
+      backoffLimit: 10
       template:
         spec:
           containers:
