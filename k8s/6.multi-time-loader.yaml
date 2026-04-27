@@ -162,9 +162,10 @@ metadata:
   name: cafeteria-cron-job
   namespace: hyuabot
 spec:
-  schedule: "20 * * * *"
+  schedule: "0 * * * *"
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
+  activeDeadlineSeconds: 600
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 300
@@ -173,6 +174,44 @@ spec:
           containers:
           - name: cafeteria-cron-job
             image: localhost:5000/hyuabot-cafeteria-updater
+            env:
+            - name: POSTGRES_ID
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: DB_ID
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: DB_PASSWORD
+            - name: POSTGRES_HOST
+              value: hyuabot-database
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: hyuabot
+          restartPolicy: OnFailure
+---
+# Weather Menu Loader
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: weather-cron-job
+  namespace: hyuabot
+spec:
+  schedule: "20 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  activeDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 300
+      template:
+        spec:
+          containers:
+          - name: weather-cron-job
+            image: localhost:5000/hyuabot-weather-updater
             env:
             - name: POSTGRES_ID
               valueFrom:
