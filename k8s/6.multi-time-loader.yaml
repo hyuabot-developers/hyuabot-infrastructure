@@ -165,10 +165,10 @@ spec:
   schedule: "0 * * * *"
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
-  activeDeadlineSeconds: 600
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 300
+      activeDeadlineSeconds: 600
       template:
         spec:
           containers:
@@ -203,10 +203,10 @@ spec:
   schedule: "20 * * * *"
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
-  activeDeadlineSeconds: 600
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 300
+      activeDeadlineSeconds: 600
       template:
         spec:
           containers:
