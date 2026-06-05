@@ -112,6 +112,8 @@ PostgreSQL data is persisted to `/mnt/data/postgres-pv-volume` on the host node 
 | `hyuabot-redis`                  | 6379          | 30379    | Redis          |
 | `hyuabot-backend-kotlin-service` | 8080          | —        | ClusterIP only |
 | Kakao backend                    | 38001         | 30002    | NodePort       |
+| `prometheus`                     | 9090          | —        | ClusterIP; scrapes backend `/actuator/prometheus` |
+| `grafana`                        | 3000          | 30300    | NodePort; behind host Nginx at `/grafana/`        |
 
 ## CronJob Schedule Summary
 
