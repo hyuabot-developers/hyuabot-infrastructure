@@ -212,11 +212,12 @@ spec:
             - containerPort: 3000
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "change-me"
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-secret
+                  key: admin-password
             - name: GF_SERVER_ROOT_URL
-              value: "https://YOUR_DOMAIN/grafana/"
-            - name: GF_SERVER_SERVE_FROM_SUB_PATH
-              value: "true"
+              value: "https://grafana.hyuabot.app"
           resources:
             requests:
               memory: "128Mi"
