@@ -52,6 +52,11 @@ spec:
       - name: database
         image: postgres:17-alpine
         imagePullPolicy: IfNotPresent
+        args:
+        - "-c"
+        - "shared_buffers=1GB"
+        - "-c"
+        - "effective_cache_size=3GB"
         ports:
         - containerPort: 5432
         env:
@@ -74,11 +79,11 @@ spec:
           name: postgres-pv-volume
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "250m"
+            memory: "2Gi"
+            cpu: "1000m"
           limits:
-            memory: "256Mi"
-            cpu: "500m"
+            memory: "4Gi"
+            cpu: "2000m"
 ---
 # Service for database
 apiVersion: v1
@@ -158,15 +163,16 @@ spec:
       - name: redis
         image: redis:latest
         imagePullPolicy: IfNotPresent
+        command: ["redis-server", "--maxmemory", "1536mb", "--maxmemory-policy", "allkeys-lru"]
         ports:
         - containerPort: 6379
         resources:
           requests:
-            memory: "128Mi"
+            memory: "512Mi"
             cpu: "250m"
           limits:
-            memory: "256Mi"
-            cpu: "500m"
+            memory: "2Gi"
+            cpu: "1000m"
 ---
 # Service for Redis
 apiVersion: v1
