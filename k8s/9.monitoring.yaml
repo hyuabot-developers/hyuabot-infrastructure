@@ -573,6 +573,8 @@ spec:
                   key: GRAFANA_ADMIN_PASSWORD
             - name: GF_SERVER_ROOT_URL
               value: "https://grafana.hyuabot.app"
+            - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+              value: "/var/lib/grafana/dashboards/hyuabot-backend.json"
             - name: GF_SMTP_ENABLED
               value: "true"
             - name: GF_SMTP_HOST
