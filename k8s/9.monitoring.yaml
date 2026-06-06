@@ -432,6 +432,119 @@ data:
       ]
     }
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alerting
+  namespace: hyuabot
+data:
+  alerting.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: http-errors
+        folder: HYUabot
+        interval: 1m
+        rules:
+          - uid: http-5xx-ratio-high
+            title: HTTP 5xx ratio high
+            condition: C
+            for: 5m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: "HTTP 5xx ratio above 5% for 5m"
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  refId: A
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: "100 * (sum(rate(http_server_requests_seconds_count{application=\"hyuabot-backend-kotlin\", status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"hyuabot-backend-kotlin\"}[5m])), 0.001)"
+                  instant: false
+                  range: true
+                  intervalMs: 15000
+                  maxDataPoints: 43200
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [5]
+          - uid: http-5xx-rate-high
+            title: HTTP 5xx rate high
+            condition: C
+            for: 5m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: "HTTP 5xx rate above 0.5/s for 5m"
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  refId: A
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: "sum(rate(http_server_requests_seconds_count{application=\"hyuabot-backend-kotlin\", status=~\"5..\"}[5m])) or vector(0)"
+                  instant: false
+                  range: true
+                  intervalMs: 15000
+                  maxDataPoints: 43200
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [0.5]
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -460,6 +573,23 @@ spec:
                   key: GRAFANA_ADMIN_PASSWORD
             - name: GF_SERVER_ROOT_URL
               value: "https://grafana.hyuabot.app"
+            - name: GF_SMTP_ENABLED
+              value: "true"
+            - name: GF_SMTP_HOST
+              value: "smtp.gmail.com:587"
+            - name: GF_SMTP_USER
+              value: "YOUR_GMAIL@gmail.com"
+            - name: GF_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: GRAFANA_SMTP_PASSWORD
+            - name: GF_SMTP_FROM_ADDRESS
+              value: "YOUR_GMAIL@gmail.com"
+            - name: GF_SMTP_FROM_NAME
+              value: "HYUabot Grafana"
+            - name: GF_SMTP_STARTTLS_POLICY
+              value: "MandatoryStartTLS"
           resources:
             requests:
               memory: "128Mi"
@@ -470,6 +600,8 @@ spec:
           volumeMounts:
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources
+            - name: alerting
+              mountPath: /etc/grafana/provisioning/alerting
             - name: dashboard-provider
               mountPath: /etc/grafana/provisioning/dashboards
             - name: dashboards
@@ -480,6 +612,9 @@ spec:
         - name: datasources
           configMap:
             name: grafana-datasources
+        - name: alerting
+          configMap:
+            name: grafana-alerting
         - name: dashboard-provider
           configMap:
             name: grafana-dashboard-provider
