@@ -544,6 +544,19 @@ data:
                     - evaluator:
                         type: gt
                         params: [0.5]
+  contactpoints.yaml: |
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: email-ops
+        receivers:
+          - uid: email-ops
+            type: email
+            settings:
+              addresses: YOUR_OPS_EMAIL@example.com
+    policies:
+      - orgId: 1
+        receiver: email-ops
 ---
 apiVersion: apps/v1
 kind: Deployment
