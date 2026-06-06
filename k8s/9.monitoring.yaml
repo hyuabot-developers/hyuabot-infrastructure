@@ -14,6 +14,9 @@ data:
         metrics_path: /actuator/prometheus
         static_configs:
           - targets: ["hyuabot-backend-kotlin-service:8080"]
+      - job_name: node-exporter
+        static_configs:
+          - targets: ["node-exporter:9100"]
       - job_name: prometheus
         static_configs:
           - targets: ["localhost:9090"]
@@ -74,6 +77,76 @@ spec:
       port: 9090
       targetPort: 9090
 ---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: hyuabot
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: node-exporter
+          image: prom/node-exporter:v1.8.2
+          args:
+            - "--path.procfs=/host/proc"
+            - "--path.sysfs=/host/sys"
+            - "--path.rootfs=/host/root"
+            - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)"
+          ports:
+            - containerPort: 9100
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: root
+              mountPath: /host/root
+              mountPropagation: HostToContainer
+              readOnly: true
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: root
+          hostPath:
+            path: /
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter
+  namespace: hyuabot
+spec:
+  selector:
+    app: node-exporter
+  ports:
+    - protocol: TCP
+      port: 9100
+      targetPort: 9100
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -116,7 +189,7 @@ metadata:
 data:
   hyuabot-backend.json: |
     {
-      "title": "HYUabot Backend (JVM / HikariCP / HTTP)",
+      "title": "HYUabot Backend",
       "uid": "hyuabot-backend",
       "timezone": "browser",
       "schemaVersion": 39,
@@ -135,56 +208,225 @@ data:
         ]
       },
       "panels": [
+        { "type": "row", "title": "Overview", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 } },
         {
-          "title": "HikariCP connections",
-          "type": "timeseries",
+          "title": "DB pending (waiting)", "type": "stat",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-          "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" } }, "overrides": [] },
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+          "fieldConfig": { "defaults": { "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+          "targets": [ { "expr": "max(hikaricp_connections_pending{application=\"$application\"})", "refId": "A" } ]
+        },
+        {
+          "title": "DB active", "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+          "targets": [ { "expr": "max(hikaricp_connections_active{application=\"$application\"})", "refId": "A" } ]
+        },
+        {
+          "title": "Heap used %", "type": "gauge",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+          "targets": [ { "expr": "100 * sum(jvm_memory_used_bytes{application=\"$application\", area=\"heap\"}) / sum(jvm_memory_max_bytes{application=\"$application\", area=\"heap\"})", "refId": "A" } ]
+        },
+        {
+          "title": "HTTP req/s", "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [ { "expr": "sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m]))", "refId": "A" } ]
+        },
+        {
+          "title": "HTTP 5xx %", "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+          "targets": [ { "expr": "100 * sum(rate(http_server_requests_seconds_count{application=\"$application\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m])), 0.001)", "refId": "A" } ]
+        },
+        {
+          "title": "Node CPU %", "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+          "targets": [ { "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))", "refId": "A" } ]
+        },
+
+        { "type": "row", "title": "DB Pool (HikariCP)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 } },
+        {
+          "title": "Connections", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 6 },
           "targets": [
             { "expr": "hikaricp_connections_active{application=\"$application\"}", "legendFormat": "active", "refId": "A" },
             { "expr": "hikaricp_connections_idle{application=\"$application\"}", "legendFormat": "idle", "refId": "B" },
-            { "expr": "hikaricp_connections_pending{application=\"$application\"}", "legendFormat": "pending (waiting)", "refId": "C" },
+            { "expr": "hikaricp_connections_pending{application=\"$application\"}", "legendFormat": "pending", "refId": "C" },
             { "expr": "hikaricp_connections_max{application=\"$application\"}", "legendFormat": "max", "refId": "D" }
           ]
         },
         {
-          "title": "Connection timeouts (rate)",
-          "type": "timeseries",
+          "title": "Pending (waiting threads)", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-          "targets": [
-            { "expr": "rate(hikaricp_connections_timeout_total{application=\"$application\"}[5m])", "legendFormat": "timeouts/s", "refId": "A" }
-          ]
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 6 },
+          "targets": [ { "expr": "hikaricp_connections_pending{application=\"$application\"}", "legendFormat": "pending", "refId": "A" } ]
         },
         {
-          "title": "Connection acquire time (max)",
-          "type": "timeseries",
+          "title": "Acquire time", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 13 },
           "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
           "targets": [
-            { "expr": "hikaricp_connections_acquire_seconds_max{application=\"$application\"}", "legendFormat": "acquire max", "refId": "A" }
+            { "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"$application\"}[5m]) / clamp_min(rate(hikaricp_connections_acquire_seconds_count{application=\"$application\"}[5m]), 0.001)", "legendFormat": "avg", "refId": "A" },
+            { "expr": "hikaricp_connections_acquire_seconds_max{application=\"$application\"}", "legendFormat": "max", "refId": "B" }
           ]
         },
         {
-          "title": "JVM heap used",
-          "type": "timeseries",
+          "title": "Connection timeouts", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 13 },
+          "targets": [ { "expr": "rate(hikaricp_connections_timeout_total{application=\"$application\"}[5m])", "legendFormat": "timeouts/s", "refId": "A" } ]
+        },
+        {
+          "title": "Usage time", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 13 },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            { "expr": "rate(hikaricp_connections_usage_seconds_sum{application=\"$application\"}[5m]) / clamp_min(rate(hikaricp_connections_usage_seconds_count{application=\"$application\"}[5m]), 0.001)", "legendFormat": "avg", "refId": "A" }
+          ]
+        },
+
+        { "type": "row", "title": "HTTP", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 } },
+        {
+          "title": "Request rate by status", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 21 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [ { "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"$application\"}[5m]))", "legendFormat": "{{status}}", "refId": "A" } ]
+        },
+        {
+          "title": "Error rate %", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 21 },
+          "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+          "targets": [ { "expr": "100 * sum(rate(http_server_requests_seconds_count{application=\"$application\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m])), 0.001)", "legendFormat": "5xx %", "refId": "A" } ]
+        },
+        {
+          "title": "Latency percentiles", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 28 },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            { "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])))", "legendFormat": "p50", "refId": "A" },
+            { "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])))", "legendFormat": "p95", "refId": "B" },
+            { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])))", "legendFormat": "p99", "refId": "C" }
+          ]
+        },
+        {
+          "title": "Top endpoints (req/s)", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 28 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [ { "expr": "topk(5, sum by (uri) (rate(http_server_requests_seconds_count{application=\"$application\"}[5m])))", "legendFormat": "{{uri}}", "refId": "A" } ]
+        },
+
+        { "type": "row", "title": "JVM", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 } },
+        {
+          "title": "Memory", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 36 },
           "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
           "targets": [
             { "expr": "sum(jvm_memory_used_bytes{application=\"$application\", area=\"heap\"})", "legendFormat": "heap used", "refId": "A" },
-            { "expr": "sum(jvm_memory_max_bytes{application=\"$application\", area=\"heap\"})", "legendFormat": "heap max", "refId": "B" }
+            { "expr": "sum(jvm_memory_max_bytes{application=\"$application\", area=\"heap\"})", "legendFormat": "heap max", "refId": "B" },
+            { "expr": "sum(jvm_memory_used_bytes{application=\"$application\", area=\"nonheap\"})", "legendFormat": "nonheap used", "refId": "C" }
           ]
         },
         {
-          "title": "HTTP request rate by status",
-          "type": "timeseries",
+          "title": "GC pause", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 36 },
           "targets": [
-            { "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"$application\"}[5m]))", "legendFormat": "{{status}}", "refId": "A" }
+            { "expr": "sum(rate(jvm_gc_pause_seconds_sum{application=\"$application\"}[5m]))", "legendFormat": "pause time/s", "refId": "A" },
+            { "expr": "sum(rate(jvm_gc_pause_seconds_count{application=\"$application\"}[5m]))", "legendFormat": "pauses/s", "refId": "B" }
+          ]
+        },
+        {
+          "title": "Threads", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 43 },
+          "targets": [
+            { "expr": "jvm_threads_live_threads{application=\"$application\"}", "legendFormat": "live", "refId": "A" },
+            { "expr": "jvm_threads_daemon_threads{application=\"$application\"}", "legendFormat": "daemon", "refId": "B" },
+            { "expr": "jvm_threads_peak_threads{application=\"$application\"}", "legendFormat": "peak", "refId": "C" }
+          ]
+        },
+        {
+          "title": "Allocation rate", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 43 },
+          "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+          "targets": [ { "expr": "rate(jvm_gc_memory_allocated_bytes_total{application=\"$application\"}[5m])", "legendFormat": "allocated/s", "refId": "A" } ]
+        },
+        {
+          "title": "Classes loaded", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 43 },
+          "targets": [ { "expr": "jvm_classes_loaded_classes{application=\"$application\"}", "legendFormat": "loaded", "refId": "A" } ]
+        },
+
+        { "type": "row", "title": "System (Node)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 } },
+        {
+          "title": "CPU by mode", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 51 },
+          "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+          "targets": [ { "expr": "sum by (mode) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))", "legendFormat": "{{mode}}", "refId": "A" } ]
+        },
+        {
+          "title": "Memory", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 51 },
+          "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+          "targets": [
+            { "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", "legendFormat": "used", "refId": "A" },
+            { "expr": "node_memory_MemTotal_bytes", "legendFormat": "total", "refId": "B" }
+          ]
+        },
+        {
+          "title": "Filesystem usage % (/)", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 58 },
+          "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+          "targets": [ { "expr": "100 * (1 - node_filesystem_avail_bytes{mountpoint=\"/\", fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\", fstype!~\"tmpfs|overlay\"})", "legendFormat": "{{mountpoint}}", "refId": "A" } ]
+        },
+        {
+          "title": "Disk I/O", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 58 },
+          "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum(rate(node_disk_read_bytes_total[5m]))", "legendFormat": "read", "refId": "A" },
+            { "expr": "sum(rate(node_disk_written_bytes_total[5m]))", "legendFormat": "write", "refId": "B" }
+          ]
+        },
+        {
+          "title": "Network", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 58 },
+          "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum(rate(node_network_receive_bytes_total{device!~\"lo|veth.*|cni.*|flannel.*\"}[5m]))", "legendFormat": "rx", "refId": "A" },
+            { "expr": "sum(rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|cni.*|flannel.*\"}[5m]))", "legendFormat": "tx", "refId": "B" }
+          ]
+        },
+        {
+          "title": "Load average", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 65 },
+          "targets": [
+            { "expr": "node_load1", "legendFormat": "1m", "refId": "A" },
+            { "expr": "node_load5", "legendFormat": "5m", "refId": "B" },
+            { "expr": "node_load15", "legendFormat": "15m", "refId": "C" }
           ]
         }
       ]
