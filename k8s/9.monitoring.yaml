@@ -17,6 +17,9 @@ data:
       - job_name: node-exporter
         static_configs:
           - targets: ["node-exporter:9100"]
+      - job_name: redis-exporter
+        static_configs:
+          - targets: ["hyuabot-redis-exporter:9121"]
       - job_name: prometheus
         static_configs:
           - targets: ["localhost:9090"]
@@ -428,6 +431,95 @@ data:
             { "expr": "node_load5", "legendFormat": "5m", "refId": "B" },
             { "expr": "node_load15", "legendFormat": "15m", "refId": "C" }
           ]
+        },
+
+        { "type": "row", "title": "Cache (Spring/Redis)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 71 } },
+        {
+          "title": "Hit ratio (overall)", "type": "gauge",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 72 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 80 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+          "targets": [ { "expr": "100 * sum(rate(cache_gets_total{application=\"$application\", result=\"hit\"}[5m])) / clamp_min(sum(rate(cache_gets_total{application=\"$application\"}[5m])), 0.001)", "refId": "A" } ]
+        },
+        {
+          "title": "Hit ratio by cache", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 18, "x": 6, "y": 72 },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+          "targets": [ { "expr": "sum by (cache) (rate(cache_gets_total{application=\"$application\", result=\"hit\"}[5m])) / clamp_min(sum by (cache) (rate(cache_gets_total{application=\"$application\"}[5m])), 0.001)", "legendFormat": "{{cache}}", "refId": "A" } ]
+        },
+        {
+          "title": "Gets by result (hit/miss)", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 78 },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "targets": [ { "expr": "sum by (cache, result) (rate(cache_gets_total{application=\"$application\"}[5m]))", "legendFormat": "{{cache}} {{result}}", "refId": "A" } ]
+        },
+        {
+          "title": "Puts & removals by cache", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 78 },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum by (cache) (rate(cache_puts_total{application=\"$application\"}[5m]))", "legendFormat": "{{cache}} puts", "refId": "A" },
+            { "expr": "sum by (cache) (rate(cache_removals_total{application=\"$application\"}[5m]))", "legendFormat": "{{cache}} removals", "refId": "B" }
+          ]
+        },
+        {
+          "title": "Redis hit ratio (server)", "type": "gauge",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 85 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 80 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+          "targets": [ { "expr": "100 * rate(redis_keyspace_hits_total[5m]) / clamp_min(rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]), 0.001)", "refId": "A" } ]
+        },
+        {
+          "title": "Redis memory used %", "type": "gauge",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 6, "x": 6, "y": 85 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 95 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+          "targets": [ { "expr": "100 * redis_memory_used_bytes / clamp_min(redis_memory_max_bytes, 1)", "refId": "A" } ]
+        },
+        {
+          "title": "Cached keys", "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 85 },
+          "targets": [ { "expr": "sum(redis_db_keys)", "refId": "A" } ]
+        },
+        {
+          "title": "Connected clients", "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 85 },
+          "targets": [ { "expr": "redis_connected_clients", "refId": "A" } ]
+        },
+        {
+          "title": "Evicted / expired keys", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 91 },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "targets": [
+            { "expr": "rate(redis_evicted_keys_total[5m])", "legendFormat": "evicted", "refId": "A" },
+            { "expr": "rate(redis_expired_keys_total[5m])", "legendFormat": "expired", "refId": "B" }
+          ]
+        },
+        {
+          "title": "Keyspace hits vs misses", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 91 },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "targets": [
+            { "expr": "rate(redis_keyspace_hits_total[5m])", "legendFormat": "hits", "refId": "A" },
+            { "expr": "rate(redis_keyspace_misses_total[5m])", "legendFormat": "misses", "refId": "B" }
+          ]
+        },
+        {
+          "title": "Redis memory used", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 98 },
+          "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+          "targets": [
+            { "expr": "redis_memory_used_bytes", "legendFormat": "used", "refId": "A" },
+            { "expr": "redis_memory_max_bytes", "legendFormat": "maxmemory", "refId": "B" }
+          ]
         }
       ]
     }
@@ -544,6 +636,60 @@ data:
                     - evaluator:
                         type: gt
                         params: [0.5]
+      - orgId: 1
+        name: cache
+        folder: HYUabot
+        interval: 1m
+        rules:
+          - uid: redis-evictions-high
+            title: Redis key evictions
+            condition: C
+            for: 5m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis is evicting keys (allkeys-lru memory pressure) for 5m — cache hit ratio will degrade"
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  refId: A
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: "sum(rate(redis_evicted_keys_total[5m])) or vector(0)"
+                  instant: false
+                  range: true
+                  intervalMs: 15000
+                  maxDataPoints: 43200
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [0]
   contactpoints.yaml: |
     apiVersion: 1
     contactPoints:

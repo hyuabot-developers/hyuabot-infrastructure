@@ -173,6 +173,20 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "1000m"
+      # Sidecar exporting Redis server stats (keyspace hits/misses, memory, evictions) to Prometheus.
+      - name: redis-exporter
+        image: oliver006/redis_exporter:v1.62.0
+        args: ["--redis.addr=redis://localhost:6379"]
+        ports:
+        - containerPort: 9121
+          name: metrics
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
 ---
 # Service for Redis
 apiVersion: v1
@@ -189,3 +203,20 @@ spec:
       nodePort: 30379
   selector:
     app: hyuabot-redis
+---
+# Service exposing the redis_exporter metrics endpoint for Prometheus to scrape.
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyuabot-redis-exporter
+  namespace: hyuabot
+  labels:
+    app: hyuabot-redis
+spec:
+  selector:
+    app: hyuabot-redis
+  ports:
+    - name: metrics
+      protocol: TCP
+      port: 9121
+      targetPort: 9121
