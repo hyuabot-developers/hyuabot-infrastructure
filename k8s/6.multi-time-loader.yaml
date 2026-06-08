@@ -5,7 +5,12 @@ metadata:
   name: bus-realtime-cron-job
   namespace: hyuabot
 spec:
-  schedule: "* * * * *"
+  # Sample GBIS key: unlimited daily quota, so refresh as fast as useful.
+  # Service hours 05:00-02:00 KST = 21h. Looped every 10s (6 runs/min) via
+  # LOOP_* env below; concurrencyPolicy Forbid keeps runs from overlapping.
+  schedule: "* 0,1,5-23 * * *"
+  timeZone: "Asia/Seoul"
+  concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
@@ -17,6 +22,10 @@ spec:
           - name: bus-realtime-cron-job
             image: localhost:5000/hyuabot-bus-realtime-updater
             env:
+            - name: LOOP_ITERATIONS
+              value: "6"
+            - name: LOOP_INTERVAL_SECONDS
+              value: "10"
             - name: POSTGRES_ID
               valueFrom:
                 secretKeyRef:
@@ -78,7 +87,13 @@ metadata:
   name: subway-realtime-cron-job
   namespace: hyuabot
 spec:
-  schedule: "* * * * *"
+  # Full Metro key (count=60): daily quota 10,000 calls, 2 routes per run.
+  # Service hours 05:00-02:00 KST = 21h (1,260 min). Looped every 20s (3 runs/min
+  # -> 6 calls/min): 1,260 * 6 = ~7,560 calls/day. (15s/4-runs would be 10,080,
+  # over quota.) Tuned via LOOP_ITERATIONS / LOOP_INTERVAL_SECONDS below.
+  schedule: "* 0,1,5-23 * * *"
+  timeZone: "Asia/Seoul"
+  concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
@@ -90,6 +105,10 @@ spec:
           - name: subway-realtime-cron-job
             image: localhost:5000/hyuabot-subway-realtime-updater
             env:
+            - name: LOOP_ITERATIONS
+              value: "3"
+            - name: LOOP_INTERVAL_SECONDS
+              value: "20"
             - name: POSTGRES_ID
               valueFrom:
                 secretKeyRef:
