@@ -767,7 +767,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: secret
-                  key: GRAFANA_OPS_EMAIL
+                  key: GRAFANA_SMTP_FROM_ADDRESS
             - name: GF_SMTP_FROM_NAME
               value: "HYUabot Grafana"
             - name: GF_SMTP_STARTTLS_POLICY
