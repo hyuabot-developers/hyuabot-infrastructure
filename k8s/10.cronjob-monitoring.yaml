@@ -98,10 +98,10 @@ data:
       "title": "CronJob Monitoring",
       "tags": ["cronjob", "kubernetes"],
       "schemaVersion": 38,
-      "version": 1,
+      "version": 2,
       "refresh": "1m",
       "time": { "from": "now-24h", "to": "now" },
-      "timezone": "browser",
+      "timezone": "Asia/Seoul",
       "panels": [
         {
           "id": 1,
@@ -195,8 +195,8 @@ data:
         {
           "id": 4,
           "type": "table",
-          "title": "CronJob Status",
-          "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+          "title": "CronJob Last Scheduled (KST)",
+          "gridPos": { "x": 0, "y": 4, "w": 24, "h": 7 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -231,16 +231,13 @@ data:
             "overrides": [
               {
                 "matcher": { "id": "byName", "options": "Last Scheduled" },
-                "properties": [{ "id": "unit", "value": "dateTimeAsLocal" }]
+                "properties": [{ "id": "unit", "value": "dateTimeAsLocalNoMs" }]
               },
               {
                 "matcher": { "id": "byName", "options": "Active" },
                 "properties": [
                   { "id": "custom.width", "value": 80 },
-                  {
-                    "id": "color",
-                    "value": { "mode": "thresholds" }
-                  },
+                  { "id": "color", "value": { "mode": "thresholds" } },
                   {
                     "id": "thresholds",
                     "value": {
@@ -264,55 +261,96 @@ data:
         {
           "id": 5,
           "type": "table",
-          "title": "Recent Failed Jobs",
-          "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+          "title": "Per-CronJob Run Summary (Last Success / Last Failure / Duration)",
+          "gridPos": { "x": 0, "y": 11, "w": 24, "h": 8 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "kube_job_status_failed{namespace=\"hyuabot\"} > 0",
+              "expr": "max by (owner_name) ( (kube_job_status_completion_time{namespace=\"hyuabot\"} * on(job_name) group_left(owner_name) kube_job_owner{namespace=\"hyuabot\", owner_kind=\"CronJob\"}) * on(job_name) group_left() (kube_job_status_succeeded{namespace=\"hyuabot\"} > 0) )",
               "instant": true,
-              "legendFormat": "{{job_name}}",
+              "legendFormat": "{{owner_name}}",
               "refId": "A"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "max by (owner_name) ( (kube_job_status_start_time{namespace=\"hyuabot\"} * on(job_name) group_left(owner_name) kube_job_owner{namespace=\"hyuabot\", owner_kind=\"CronJob\"}) * on(job_name) group_left() (kube_job_status_failed{namespace=\"hyuabot\"} > 0) )",
+              "instant": true,
+              "legendFormat": "{{owner_name}}",
+              "refId": "B"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "max by (owner_name) ( ((kube_job_status_completion_time{namespace=\"hyuabot\"} - kube_job_status_start_time{namespace=\"hyuabot\"}) / 60 * on(job_name) group_left(owner_name) kube_job_owner{namespace=\"hyuabot\", owner_kind=\"CronJob\"}) * on(job_name) group_left() (kube_job_status_succeeded{namespace=\"hyuabot\"} > 0) )",
+              "instant": true,
+              "legendFormat": "{{owner_name}}",
+              "refId": "C"
             }
           ],
           "transformations": [
+            { "id": "merge", "options": {} },
             {
               "id": "organize",
               "options": {
-                "excludeByName": { "Time": true, "namespace": true, "instance": true },
+                "excludeByName": { "Time": true },
                 "renameByName": {
-                  "job_name": "Job",
-                  "Value": "Failed Count"
+                  "owner_name": "CronJob",
+                  "Value #A": "Last Success",
+                  "Value #B": "Last Failure",
+                  "Value #C": "Duration (min)"
                 }
               }
             }
           ],
           "fieldConfig": {
-            "defaults": {
-              "color": { "mode": "fixed", "fixedColor": "red" }
-            }
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Last Success" },
+                "properties": [
+                  { "id": "unit", "value": "dateTimeAsLocalNoMs" },
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } },
+                  { "id": "custom.displayMode", "value": "color-text" }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Last Failure" },
+                "properties": [
+                  { "id": "unit", "value": "dateTimeAsLocalNoMs" },
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } },
+                  { "id": "custom.displayMode", "value": "color-text" }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Duration (min)" },
+                "properties": [
+                  { "id": "unit", "value": "short" },
+                  { "id": "decimals", "value": 1 },
+                  { "id": "custom.width", "value": 120 }
+                ]
+              }
+            ]
           },
           "options": {
-            "sortBy": [{ "displayName": "Failed Count", "desc": true }],
+            "sortBy": [{ "displayName": "CronJob", "desc": false }],
             "footer": { "show": false }
           }
         },
         {
           "id": 6,
           "type": "timeseries",
-          "title": "Job Duration (seconds)",
-          "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+          "title": "Job Duration over Time (min)",
+          "gridPos": { "x": 0, "y": 19, "w": 24, "h": 8 },
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "kube_job_status_completion_time{namespace=\"hyuabot\"} - kube_job_status_start_time{namespace=\"hyuabot\"}",
-              "legendFormat": "{{job_name}}",
+              "expr": "(kube_job_status_completion_time{namespace=\"hyuabot\"} - kube_job_status_start_time{namespace=\"hyuabot\"}) / 60 * on(job_name) group_left(owner_name) kube_job_owner{namespace=\"hyuabot\", owner_kind=\"CronJob\"}",
+              "legendFormat": "{{owner_name}}",
               "refId": "A"
             }
           ],
           "fieldConfig": {
             "defaults": {
-              "unit": "s",
+              "unit": "short",
+              "custom": { "drawStyle": "points", "pointSize": 6 },
               "color": { "mode": "palette-classic" }
             }
           },
