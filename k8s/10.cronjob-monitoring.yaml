@@ -1,0 +1,389 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-state-metrics
+  namespace: hyuabot
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics
+rules:
+  - apiGroups: [""]
+    resources: [pods, nodes, namespaces, replicationcontrollers, resourcequotas, services, endpoints, persistentvolumeclaims, persistentvolumes, configmaps, secrets]
+    verbs: [list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets, statefulsets, daemonsets]
+    verbs: [list, watch]
+  - apiGroups: [autoscaling]
+    resources: [horizontalpodautoscalers]
+    verbs: [list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics
+subjects:
+  - kind: ServiceAccount
+    name: kube-state-metrics
+    namespace: hyuabot
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+  namespace: hyuabot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+    spec:
+      serviceAccountName: kube-state-metrics
+      containers:
+        - name: kube-state-metrics
+          image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.13.0
+          args:
+            - --resources=cronjobs,jobs,pods,nodes,deployments,replicasets
+          ports:
+            - name: http-metrics
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-state-metrics
+  namespace: hyuabot
+spec:
+  selector:
+    app: kube-state-metrics
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-cronjob-dashboards
+  namespace: hyuabot
+data:
+  cronjob-monitoring.json: |
+    {
+      "uid": "cronjob-monitoring",
+      "title": "CronJob Monitoring",
+      "tags": ["cronjob", "kubernetes"],
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "1m",
+      "time": { "from": "now-24h", "to": "now" },
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Active Jobs",
+          "gridPos": { "x": 0, "y": 0, "w": 8, "h": 4 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(kube_cronjob_status_active{namespace=\"hyuabot\"}) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "orientation": "auto",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Failed Jobs (24h)",
+          "gridPos": { "x": 8, "y": 0, "w": 8, "h": 4 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(kube_job_status_failed{namespace=\"hyuabot\"}) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "orientation": "auto",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Succeeded Jobs (24h)",
+          "gridPos": { "x": 16, "y": 0, "w": 8, "h": 4 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum(kube_job_status_succeeded{namespace=\"hyuabot\"}) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "green" }
+            }
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "orientation": "auto",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 4,
+          "type": "table",
+          "title": "CronJob Status",
+          "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "kube_cronjob_status_last_schedule_time{namespace=\"hyuabot\"}",
+              "instant": true,
+              "legendFormat": "{{cronjob}}",
+              "refId": "A"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "kube_cronjob_status_active{namespace=\"hyuabot\"}",
+              "instant": true,
+              "legendFormat": "{{cronjob}}",
+              "refId": "B"
+            }
+          ],
+          "transformations": [
+            { "id": "merge", "options": {} },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true, "namespace": true, "job": true, "instance": true },
+                "renameByName": {
+                  "cronjob": "CronJob",
+                  "Value #A": "Last Scheduled",
+                  "Value #B": "Active"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Last Scheduled" },
+                "properties": [{ "id": "unit", "value": "dateTimeAsLocal" }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Active" },
+                "properties": [
+                  { "id": "custom.width", "value": 80 },
+                  {
+                    "id": "color",
+                    "value": { "mode": "thresholds" }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        { "color": "green", "value": null },
+                        { "color": "blue", "value": 1 }
+                      ]
+                    }
+                  },
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "sortBy": [{ "displayName": "CronJob", "desc": false }],
+            "footer": { "show": false }
+          }
+        },
+        {
+          "id": 5,
+          "type": "table",
+          "title": "Recent Failed Jobs",
+          "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "kube_job_status_failed{namespace=\"hyuabot\"} > 0",
+              "instant": true,
+              "legendFormat": "{{job_name}}",
+              "refId": "A"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true, "namespace": true, "instance": true },
+                "renameByName": {
+                  "job_name": "Job",
+                  "Value": "Failed Count"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "fixed", "fixedColor": "red" }
+            }
+          },
+          "options": {
+            "sortBy": [{ "displayName": "Failed Count", "desc": true }],
+            "footer": { "show": false }
+          }
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Job Duration (seconds)",
+          "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "kube_job_status_completion_time{namespace=\"hyuabot\"} - kube_job_status_start_time{namespace=\"hyuabot\"}",
+              "legendFormat": "{{job_name}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "palette-classic" }
+            }
+          },
+          "options": {
+            "tooltip": { "mode": "multi" },
+            "legend": { "displayMode": "list", "placement": "bottom" }
+          }
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-cronjob-alerting
+  namespace: hyuabot
+data:
+  cronjob-alerting.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: cronjob
+        folder: HYUabot
+        interval: 1m
+        rules:
+          - uid: cronjob-job-failed
+            title: CronJob job failed
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: critical
+            annotations:
+              summary: "Kubernetes job {{ $labels.job_name }} failed"
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  refId: A
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: "sum by (job_name, namespace) (kube_job_status_failed{namespace=\"hyuabot\"}) > 0"
+                  instant: false
+                  range: true
+                  intervalMs: 15000
+                  maxDataPoints: 43200
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [0]

@@ -23,6 +23,9 @@ data:
       - job_name: prometheus
         static_configs:
           - targets: ["localhost:9090"]
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets: ["kube-state-metrics:8080"]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -788,6 +791,10 @@ spec:
               mountPath: /etc/grafana/provisioning/dashboards
             - name: dashboards
               mountPath: /var/lib/grafana/dashboards
+            - name: cronjob-dashboards
+              mountPath: /var/lib/grafana/dashboards/cronjob
+            - name: cronjob-alerting
+              mountPath: /etc/grafana/provisioning/alerting/cronjob
             - name: storage
               mountPath: /var/lib/grafana
       volumes:
@@ -803,6 +810,12 @@ spec:
         - name: dashboards
           configMap:
             name: grafana-dashboards
+        - name: cronjob-dashboards
+          configMap:
+            name: grafana-cronjob-dashboards
+        - name: cronjob-alerting
+          configMap:
+            name: grafana-cronjob-alerting
         - name: storage
           emptyDir: {}
 ---
