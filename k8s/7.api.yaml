@@ -5,7 +5,12 @@ metadata:
   name: hyuabot-backend-kotlin
   namespace: hyuabot
 spec:
-  replicas: 1
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: hyuabot-backend-kotlin
@@ -14,6 +19,7 @@ spec:
       labels:
         app: hyuabot-backend-kotlin
     spec:
+      terminationGracePeriodSeconds: 80
       containers:
       - name: api
         image: localhost:5000/hyuabot-backend-kotlin:latest
@@ -29,6 +35,10 @@ spec:
           limits:
             memory: "4Gi"
             cpu: "2000m"
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sh", "-c", "sleep 15"]
         readinessProbe:
           httpGet:
             path: /actuator/health
