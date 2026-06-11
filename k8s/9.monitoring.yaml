@@ -709,7 +709,7 @@ data:
           - uid: email-ops
             type: email
             settings:
-              addresses: YOUR_OPS_EMAIL@example.com
+              addresses: ${GRAFANA_OPS_EMAIL}
     policies:
       - orgId: 1
         receiver: email-ops
@@ -749,14 +749,25 @@ spec:
             - name: GF_SMTP_HOST
               value: "smtp.gmail.com:587"
             - name: GF_SMTP_USER
-              value: "YOUR_GMAIL@gmail.com"
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: GRAFANA_SMTP_FROM_ADDRESS
             - name: GF_SMTP_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: secret
                   key: GRAFANA_SMTP_PASSWORD
             - name: GF_SMTP_FROM_ADDRESS
-              value: "YOUR_GMAIL@gmail.com"
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: GRAFANA_SMTP_FROM_ADDRESS
+            - name: GRAFANA_OPS_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: GRAFANA_OPS_EMAIL
             - name: GF_SMTP_FROM_NAME
               value: "HYUabot Grafana"
             - name: GF_SMTP_STARTTLS_POLICY
