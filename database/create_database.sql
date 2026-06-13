@@ -2,9 +2,9 @@
 -- SELECT pg_terminate_backend(pg_stat_activity.pid)
 -- FROM pg_stat_activity
 -- WHERE pg_stat_activity.datname = 'hyuabot';
-drop database if exists hyuabot;
-create database hyuabot;
-\c hyuabot;
+-- drop database if exists hyuabot_test;
+-- create database hyuabot_test;
+\c hyuabot_test;
 
 create schema if not exists public;
 
@@ -12,6 +12,7 @@ create schema if not exists public;
 drop index if exists idx_shuttle_route_stop;
 drop index if exists idx_shuttle_period_type;
 drop index if exists idx_shuttle_holiday_date;
+drop index if exists idx_public_holiday_date;
 drop index if exists idx_commute_shuttle_timetable;
 drop index if exists idx_bus_route_stop;
 drop index if exists idx_bus_departure_log;
@@ -41,6 +42,9 @@ drop table if exists shuttle_holiday cascade;
 drop table if exists commute_shuttle_timetable cascade;
 drop table if exists commute_shuttle_route cascade;
 drop table if exists commute_shuttle_stop cascade;
+
+-- 공휴일 테이블 삭제
+drop table if exists public_holiday cascade;
 
 -- 버스 테이블 삭제
 drop table if exists bus_realtime cascade;
@@ -423,6 +427,15 @@ create table if not exists bus_route_stop (
 
 -- 버스 노선별 정류장 인덱스
 create index if not exists idx_bus_route_stop on bus_route_stop(route_id, stop_id);
+
+-- 공휴일 (버스/전철 공통)
+create table if not exists public_holiday(
+    seq serial primary key,
+    holiday_date date not null,
+    holiday_name varchar(30) not null,
+    calendar_type varchar(15) not null
+);
+create unique index if not exists idx_public_holiday_date on public_holiday(holiday_date, calendar_type);
 
 -- 버스 실시간 운행 정보
 create table if not exists bus_realtime(
