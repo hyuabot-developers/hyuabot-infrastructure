@@ -19,6 +19,13 @@ spec:
         image: localhost:5000/hyuabot-kakao-backend-go
         ports:
         - containerPort: 38001
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "125m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
         env:
         - name: SITE_DOMAIN
           value: 'https://chat.hyuabot.app'

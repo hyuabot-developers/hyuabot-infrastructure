@@ -54,9 +54,9 @@ spec:
         imagePullPolicy: IfNotPresent
         args:
         - "-c"
-        - "shared_buffers=1GB"
+        - "shared_buffers=512MB"
         - "-c"
-        - "effective_cache_size=3GB"
+        - "effective_cache_size=2GB"
         ports:
         - containerPort: 5432
         env:
@@ -79,11 +79,11 @@ spec:
           name: postgres-pv-volume
         resources:
           requests:
-            memory: "2Gi"
-            cpu: "1000m"
+            memory: "1Gi"
+            cpu: "500m"
           limits:
-            memory: "4Gi"
-            cpu: "2000m"
+            memory: "3Gi"
+            cpu: "1500m"
 ---
 # Service for database
 apiVersion: v1
@@ -163,16 +163,16 @@ spec:
       - name: redis
         image: redis:latest
         imagePullPolicy: IfNotPresent
-        command: ["redis-server", "--maxmemory", "1536mb", "--maxmemory-policy", "allkeys-lru"]
+        command: ["redis-server", "--maxmemory", "768mb", "--maxmemory-policy", "allkeys-lru"]
         ports:
         - containerPort: 6379
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "256Mi"
+            cpu: "125m"
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
+            memory: "1536Mi"
+            cpu: "500m"
       # Sidecar exporting Redis server stats (keyspace hits/misses, memory, evictions) to Prometheus.
       - name: redis-exporter
         image: oliver006/redis_exporter:v1.62.0
