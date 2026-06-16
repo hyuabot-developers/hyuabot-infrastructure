@@ -24,7 +24,7 @@ spec:
             resources:
               requests:
                 memory: "128Mi"
-                cpu: "125m"
+                cpu: "50m"
               limits:
                 memory: "512Mi"
                 cpu: "250m"
@@ -71,7 +71,7 @@ spec:
             resources:
               requests:
                 memory: "128Mi"
-                cpu: "125m"
+                cpu: "50m"
               limits:
                 memory: "512Mi"
                 cpu: "250m"
@@ -121,7 +121,7 @@ spec:
             resources:
               requests:
                 memory: "128Mi"
-                cpu: "125m"
+                cpu: "50m"
               limits:
                 memory: "512Mi"
                 cpu: "250m"
@@ -174,7 +174,7 @@ spec:
             resources:
               requests:
                 memory: "128Mi"
-                cpu: "125m"
+                cpu: "50m"
               limits:
                 memory: "512Mi"
                 cpu: "250m"
@@ -224,7 +224,7 @@ spec:
             resources:
               requests:
                 memory: "128Mi"
-                cpu: "125m"
+                cpu: "50m"
               limits:
                 memory: "512Mi"
                 cpu: "250m"
@@ -271,7 +271,7 @@ spec:
             resources:
               requests:
                 memory: "128Mi"
-                cpu: "125m"
+                cpu: "50m"
               limits:
                 memory: "512Mi"
                 cpu: "250m"
