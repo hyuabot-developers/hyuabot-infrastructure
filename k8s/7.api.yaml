@@ -28,6 +28,25 @@ spec:
         env:
         - name: JAVA_TOOL_OPTIONS
           value: "-XX:MaxRAMPercentage=75.0"
+        - name: APNS_LIVE_ACTIVITY_ENABLED
+          value: "true"
+        - name: APNS_BUNDLE_ID
+          value: "net.jaram.hyuabot"
+        - name: APNS_TEAM_ID
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: APNS_TEAM_ID
+        - name: APNS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: APNS_KEY_ID
+        - name: APNS_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: APNS_PRIVATE_KEY
         resources:
           requests:
             memory: "1Gi"

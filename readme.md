@@ -99,6 +99,9 @@ kubectl apply -f k8s/8.kakao.yaml
 | `METRO_API_KEY`     | subway-realtime-updater                |
 | `WEATHER_API_KEY`   | weather-updater                        |
 | `GOOGLE_PROJECT_ID` | library-updater (Firebase FCM)         |
+| `APNS_TEAM_ID`      | backend Live Activity APNs push        |
+| `APNS_KEY_ID`       | backend Live Activity APNs push        |
+| `APNS_PRIVATE_KEY`  | backend Live Activity APNs push        |
 
 ### Persistent storage
 
