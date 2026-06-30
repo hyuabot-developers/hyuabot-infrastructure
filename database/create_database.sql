@@ -318,21 +318,22 @@ create or replace function update_shuttle_timetable_view()
 returns trigger as $$
 begin
     refresh materialized view shuttle_timetable_view;
-    return new;
+    refresh materialized view shuttle_timetable_grouped_view;
+    return null;
 end;
 $$ language plpgsql;
 
 create trigger update_shuttle_timetable_view_timetable
 after insert or update or delete on shuttle_timetable
-for each row execute procedure update_shuttle_timetable_view();
+for each statement execute procedure update_shuttle_timetable_view();
 
 create trigger update_shuttle_timetable_view_route_stop
 after insert or update or delete on shuttle_route_stop
-for each row execute procedure update_shuttle_timetable_view();
+for each statement execute procedure update_shuttle_timetable_view();
 
 create trigger update_shuttle_timetable_view_route
 after insert or update or delete on shuttle_route
-for each row execute procedure update_shuttle_timetable_view();
+for each statement execute procedure update_shuttle_timetable_view();
 
 -- 통학버스 운행 노선
 create table if not exists commute_shuttle_route (
