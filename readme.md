@@ -145,7 +145,7 @@ The `database/` directory contains the canonical PostgreSQL schema.
 
 | Domain          | Tables                                                                                    |
 |-----------------|-------------------------------------------------------------------------------------------|
-| Auth            | `admin_user`, `auth_refresh_token`                                                        |
+| Auth            | `admin_user`, `admin_user_invitation`, `auth_refresh_token`                               |
 | Bus             | `bus_route`, `bus_stop`, `bus_timetable`, `bus_realtime`, `bus_departure_log`             |
 | Subway          | `subway_route`, `subway_station`, `subway_timetable`, `subway_realtime`                   |
 | Shuttle         | `shuttle_route`, `shuttle_stop`, `shuttle_timetable`, `shuttle_period`, `shuttle_holiday` |
