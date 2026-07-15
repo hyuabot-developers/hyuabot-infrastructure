@@ -20,9 +20,11 @@ drop index if exists idx_bus_timetable;
 drop index if exists idx_subway_timetable;
 drop index if exists idx_menu;
 drop index if exists idx_admin_user_permission_permission;
+drop index if exists idx_admin_user_invitation_user_active;
 
 
 -- 관리자 계정 테이블 삭제
+drop table if exists admin_user_invitation cascade;
 drop table if exists admin_user_permission cascade;
 drop table if exists admin_user cascade;
 drop table if exists auth_refresh_token cascade;
@@ -91,12 +93,38 @@ drop table if exists campus cascade;
 -- 관리자 계정 테이블
 create table if not exists admin_user (
     user_id varchar(20) primary key,
-    password bytea not null,
+    password bytea,
     name varchar(20) not null,
     email varchar(50) not null,
     phone varchar(15) not null,
-    active boolean not null
+    active boolean not null,
+    auth_version integer not null default 0
 );
+
+create unique index if not exists idx_admin_user_email_normalized
+    on admin_user(lower(trim(email)));
+
+create table if not exists admin_user_invitation (
+    uuid uuid primary key,
+    user_id varchar(20) not null,
+    token_hash char(64) not null unique,
+    created_by varchar(20) not null,
+    expires_at timestamptz not null,
+    consumed_at timestamptz,
+    revoked_at timestamptz,
+    created_at timestamptz not null,
+    constraint fk_admin_user_invitation_user
+        foreign key (user_id)
+        references admin_user(user_id)
+        on delete cascade,
+    constraint fk_admin_user_invitation_creator
+        foreign key (created_by)
+        references admin_user(user_id)
+);
+
+create unique index if not exists idx_admin_user_invitation_user_active
+    on admin_user_invitation(user_id)
+    where consumed_at is null and revoked_at is null;
 
 create table if not exists admin_user_permission (
     user_id varchar(20) not null,
