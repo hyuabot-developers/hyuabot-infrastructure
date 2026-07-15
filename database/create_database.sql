@@ -19,9 +19,11 @@ drop index if exists idx_bus_departure_log;
 drop index if exists idx_bus_timetable;
 drop index if exists idx_subway_timetable;
 drop index if exists idx_menu;
+drop index if exists idx_admin_user_permission_permission;
 
 
 -- 관리자 계정 테이블 삭제
+drop table if exists admin_user_permission cascade;
 drop table if exists admin_user cascade;
 drop table if exists auth_refresh_token cascade;
 
@@ -95,6 +97,31 @@ create table if not exists admin_user (
     phone varchar(15) not null,
     active boolean not null
 );
+
+create table if not exists admin_user_permission (
+    user_id varchar(20) not null,
+    permission varchar(30) not null,
+    primary key (user_id, permission),
+    constraint fk_admin_user_permission_user
+        foreign key (user_id)
+        references admin_user(user_id)
+        on delete cascade,
+    constraint chk_admin_user_permission
+        check (permission in (
+            'SUPER_ADMIN',
+            'SHUTTLE',
+            'BUS',
+            'SUBWAY',
+            'CAFETERIA',
+            'READING_ROOM',
+            'CONTACT',
+            'CALENDAR',
+            'NOTICE'
+        ))
+);
+
+create index if not exists idx_admin_user_permission_permission
+    on admin_user_permission(permission);
 
 create table if not exists auth_refresh_token (
     uuid uuid primary key,
