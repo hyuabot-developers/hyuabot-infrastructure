@@ -112,7 +112,7 @@ The two notifier tokens must match the values configured on the separate notifie
 Operational Web Push is delivered by the private `hyuabot-ops-notifier` service on the separate Oracle Instance-2 runner. Before applying the backend and Grafana manifests:
 
 1. Point `notifier.hyuabot.app` to Oracle Instance-2 and allow inbound HTTPS.
-2. Install the notifier systemd unit and Caddy configuration supplied by the notifier repository.
+2. Configure the existing reverse proxy to forward HTTPS traffic to the notifier's port; the notifier deployment workflow installs its systemd unit automatically.
 3. Configure its VAPID keys, `SERVICE_TOKEN`, and `GRAFANA_TOKEN`; the two tokens must match this cluster's Kubernetes Secret.
 4. Verify `https://notifier.hyuabot.app/health`, then apply `k8s/7.api.yaml` and `k8s/9.monitoring.yaml`.
 
