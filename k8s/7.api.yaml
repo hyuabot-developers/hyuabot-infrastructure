@@ -32,6 +32,12 @@ spec:
           value: "true"
         - name: APNS_BUNDLE_ID
           value: "net.jaram.hyuabot"
+        - name: PROMETHEUS_BASE_URL
+          value: "http://prometheus:9090"
+        - name: GRAFANA_PUBLIC_URL
+          value: "https://grafana.hyuabot.app"
+        - name: TIMETABLE_IMPORT_PREVIEW_TTL_MINUTES
+          value: "15"
         - name: APNS_TEAM_ID
           valueFrom:
             secretKeyRef:
