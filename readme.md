@@ -102,6 +102,21 @@ kubectl apply -f k8s/8.kakao.yaml
 | `APNS_TEAM_ID`      | backend Live Activity APNs push        |
 | `APNS_KEY_ID`       | backend Live Activity APNs push        |
 | `APNS_PRIVATE_KEY`  | backend Live Activity APNs push        |
+| `NOTIFIER_SERVICE_TOKEN` | backend-to-notifier authentication |
+| `NOTIFIER_GRAFANA_TOKEN` | Grafana webhook authentication     |
+
+The two notifier tokens must match the values configured on the separate notifier host. Generate independent, random values for each token and do not commit their decoded values.
+
+### Operations notifier
+
+Operational Web Push is delivered by the private `hyuabot-ops-notifier` service on the separate Oracle Instance-2 runner. Before applying the backend and Grafana manifests:
+
+1. Point `notifier.hyuabot.app` to Oracle Instance-2 and allow inbound HTTPS.
+2. Install the notifier systemd unit and Caddy configuration supplied by the notifier repository.
+3. Configure its VAPID keys, `SERVICE_TOKEN`, and `GRAFANA_TOKEN`; the two tokens must match this cluster's Kubernetes Secret.
+4. Verify `https://notifier.hyuabot.app/health`, then apply `k8s/7.api.yaml` and `k8s/9.monitoring.yaml`.
+
+This feature has no PostgreSQL schema or data migration.
 
 ### Persistent storage
 

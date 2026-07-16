@@ -713,6 +713,15 @@ data:
             type: email
             settings:
               addresses: ${GRAFANA_OPS_EMAIL}
+          - uid: web-push-ops
+            type: webhook
+            disableResolveMessage: false
+            settings:
+              url: https://notifier.hyuabot.app/api/v1/alerts/grafana
+              httpMethod: POST
+              authorization_scheme: Bearer
+              authorization_credentials: ${NOTIFIER_GRAFANA_TOKEN}
+              maxAlerts: '10'
     policies:
       - orgId: 1
         receiver: email-ops
@@ -771,6 +780,11 @@ spec:
                 secretKeyRef:
                   name: secret
                   key: GRAFANA_SMTP_FROM_ADDRESS
+            - name: NOTIFIER_GRAFANA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: NOTIFIER_GRAFANA_TOKEN
             - name: GF_SMTP_FROM_NAME
               value: "HYUabot Grafana"
             - name: GF_SMTP_STARTTLS_POLICY
