@@ -98,7 +98,8 @@ create table if not exists admin_user (
     email varchar(50) not null,
     phone varchar(15) not null,
     active boolean not null,
-    auth_version integer not null default 0
+    auth_version integer not null default 0,
+    deleted_at timestamptz
 );
 
 create unique index if not exists idx_admin_user_email_normalized
