@@ -85,7 +85,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: secret
-                  key: DATA_GO_KR_API_KEY
+                  key: BUS_API_KEY
             - name: POSTGRES_ID
               valueFrom:
                 secretKeyRef:
