@@ -545,6 +545,11 @@ metadata:
 data:
   alerting.yaml: |
     apiVersion: 1
+    deleteRules:
+      - orgId: 1
+        uid: holiday-configuration-error
+      - orgId: 1
+        uid: holiday-configuration-warning
     groups:
       - orgId: 1
         name: http-errors
@@ -654,16 +659,16 @@ data:
         folder: HYUabot
         interval: 1m
         rules:
-          - uid: holiday-configuration-error
-            title: Holiday timetable configuration error
+          - uid: holiday-configuration-day-before
+            title: Holiday timetable configuration due tomorrow
             condition: C
             for: 1m
             noDataState: OK
             execErrState: Error
             labels:
-              severity: critical
+              severity: warning
             annotations:
-              summary: "An imminent holiday timetable configuration needs attention"
+              summary: "A holiday timetable configuration is still unresolved one day before service"
             data:
               - refId: A
                 relativeTimeRange:
@@ -675,7 +680,7 @@ data:
                   datasource:
                     type: prometheus
                     uid: prometheus
-                  expr: "max(hyuabot_holiday_configuration_issues{severity=\"error\"}) or vector(0)"
+                  expr: "(max(hyuabot_holiday_configuration_due_issues{window=\"tomorrow\"}) or vector(0)) * (hour(vector(time() + 9 * 60 * 60)) >= bool 9)"
                   instant: false
                   range: true
                   intervalMs: 15000
@@ -703,16 +708,16 @@ data:
                     - evaluator:
                         type: gt
                         params: [0]
-          - uid: holiday-configuration-warning
-            title: Holiday timetable configuration warning
+          - uid: holiday-configuration-day-of
+            title: Holiday timetable configuration due today
             condition: C
-            for: 15m
+            for: 1m
             noDataState: OK
             execErrState: Error
             labels:
-              severity: warning
+              severity: critical
             annotations:
-              summary: "A holiday timetable configuration needs advance review"
+              summary: "A holiday timetable configuration remains unresolved on the service day"
             data:
               - refId: A
                 relativeTimeRange:
@@ -724,7 +729,7 @@ data:
                   datasource:
                     type: prometheus
                     uid: prometheus
-                  expr: "max(hyuabot_holiday_configuration_issues{severity=\"warning\"}) or vector(0)"
+                  expr: "(max(hyuabot_holiday_configuration_due_issues{window=\"today\"}) or vector(0)) * (hour(vector(time() + 9 * 60 * 60)) >= bool 6)"
                   instant: false
                   range: true
                   intervalMs: 15000
