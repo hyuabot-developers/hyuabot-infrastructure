@@ -15,6 +15,7 @@ Kubernetes-based infrastructure for HYUabot — a campus information service for
 | [hyuabot-subway-realtime-updater](https://github.com/hyuabot-developers/hyuabot-subway-realtime-updater)     | Real-time subway arrival updater (Python, every minute)  | [![Code Check](https://github.com/hyuabot-developers/hyuabot-subway-realtime-updater/actions/workflows/code-check.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-subway-realtime-updater/actions/workflows/code-check.yml)     | [![Deploy](https://github.com/hyuabot-developers/hyuabot-subway-realtime-updater/actions/workflows/deploy.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-subway-realtime-updater/actions/workflows/deploy.yml)                 |
 | [hyuabot-subway-timetable-updater](https://github.com/hyuabot-developers/hyuabot-subway-timetable-updater)   | Subway schedule data loader (Python)                     | [![Code Check](https://github.com/hyuabot-developers/hyuabot-subway-timetable-updater/actions/workflows/code-check.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-subway-timetable-updater/actions/workflows/code-check.yml)   | [![Deploy](https://github.com/hyuabot-developers/hyuabot-subway-timetable-updater/actions/workflows/deploy.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-subway-timetable-updater/actions/workflows/deploy.yml)               |
 | [hyuabot-shuttle-timetable-updater](https://github.com/hyuabot-developers/hyuabot-shuttle-timetable-updater) | Campus shuttle timetable loader (Python)                 | [![Code Check](https://github.com/hyuabot-developers/hyuabot-shuttle-timetable-updater/actions/workflows/code-check.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-shuttle-timetable-updater/actions/workflows/code-check.yml) | [![Deploy](https://github.com/hyuabot-developers/hyuabot-shuttle-timetable-updater/actions/workflows/deploy.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-shuttle-timetable-updater/actions/workflows/deploy.yml)             |
+| [hyuabot-holiday-updater](https://github.com/hyuabot-developers/hyuabot-holiday-updater)                     | Korean public holiday synchronizer (Python, daily)       | [![Code Check](https://github.com/hyuabot-developers/hyuabot-holiday-updater/actions/workflows/code-check.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-holiday-updater/actions/workflows/code-check.yml)                     | [![Deploy](https://github.com/hyuabot-developers/hyuabot-holiday-updater/actions/workflows/deploy.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-holiday-updater/actions/workflows/deploy.yml)                             |
 | [hyuabot-library-updater](https://github.com/hyuabot-developers/hyuabot-library-updater)                     | Reading room availability updater (Python, every minute) | [![Code Check](https://github.com/hyuabot-developers/hyuabot-library-updater/actions/workflows/code-check.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-library-updater/actions/workflows/code-check.yml)                     | [![Deploy](https://github.com/hyuabot-developers/hyuabot-library-updater/actions/workflows/deploy.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-library-updater/actions/workflows/deploy.yml)                                 |
 | [hyuabot-cafeteria-updater](https://github.com/hyuabot-developers/hyuabot-cafeteria-updater)                 | Dining hall menu updater (Python, hourly)                | [![Code Check](https://github.com/hyuabot-developers/hyuabot-cafeteria-updater/actions/workflows/code-check.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-cafeteria-updater/actions/workflows/code-check.yml)                 | [![Deploy](https://github.com/hyuabot-developers/hyuabot-cafeteria-updater/actions/workflows/deploy.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-cafeteria-updater/actions/workflows/deploy.yml)                             |
 | [hyuabot-weather-updater](https://github.com/hyuabot-developers/hyuabot-weather-updater)                     | KMA weather forecast updater (Python, hourly)            | [![Code Check](https://github.com/hyuabot-developers/hyuabot-weather-updater/actions/workflows/code-check.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-weather-updater/actions/workflows/code-check.yml)                     | [![Deploy](https://github.com/hyuabot-developers/hyuabot-weather-updater/actions/workflows/deploy.yml/badge.svg)](https://github.com/hyuabot-developers/hyuabot-weather-updater/actions/workflows/deploy.yml)                                 |
@@ -45,6 +46,7 @@ Kubernetes-based infrastructure for HYUabot — a campus information service for
 │  │                                                     │  │
 │  │  Daily:                                             │  │
 │  │    bus-log-updater (01:00)                          │  │
+│  │    holiday-updater (03:10)                          │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                                                           │
 │  ┌──────────────────────────────────────────────────┐     │
@@ -74,6 +76,7 @@ Manifests are applied in numbered order:
 | `k8s/6.multi-time-loader.yaml` | CronJobs             | Recurring realtime and periodic updaters        |
 | `k8s/7.api.yaml`               | Deployment + Service | Kotlin GraphQL backend                          |
 | `k8s/8.kakao.yaml`             | Deployment + Service | Kakao chatbot backend (Go)                      |
+| `k8s/9.monitoring.yaml`        | Prometheus + Grafana | Metrics dashboards and operational alerts      |
 
 ### Applying the stack
 
@@ -87,7 +90,13 @@ kubectl apply -f k8s/5.one-time-loader.yaml
 kubectl apply -f k8s/6.multi-time-loader.yaml
 kubectl apply -f k8s/7.api.yaml
 kubectl apply -f k8s/8.kakao.yaml
+kubectl apply -f k8s/9.monitoring.yaml
 ```
+
+Before deploying the holiday updater or the backend holiday audit, apply
+`database/migrations/20260717_holiday_automation.sql` to the existing database.
+The migration aborts without deleting rows when duplicate shuttle decisions exist;
+resolve any reported `(holiday_date, calendar_type)` duplicates and rerun it.
 
 ### Required secrets (`k8s/2.secret.yaml`)
 
@@ -97,6 +106,7 @@ kubectl apply -f k8s/8.kakao.yaml
 | `DB_PASSWORD`       | All database-connected containers      |
 | `BUS_API_KEY`       | bus-timetable-updater, bus-log-updater |
 | `METRO_API_KEY`     | subway-realtime-updater                |
+| `DATA_GO_KR_API_KEY` | holiday-updater                       |
 | `WEATHER_API_KEY`   | weather-updater                        |
 | `GOOGLE_PROJECT_ID` | library-updater (Firebase FCM)         |
 | `APNS_TEAM_ID`      | backend Live Activity APNs push        |
@@ -143,6 +153,7 @@ PostgreSQL data is persisted to `/mnt/data/postgres-pv-volume` on the host node 
 | `cafeteria-cron-job`         | `0 * * * *` (every hour)     | `hyuabot-cafeteria-updater`       |
 | `weather-cron-job`           | `20 * * * *` (hourly at :20) | `hyuabot-weather-updater`         |
 | `bus-departure-log-cron-job` | `0 1 * * *` (daily 01:00)    | `hyuabot-bus-log-updater`         |
+| `holiday-cron-job`          | `10 3 * * *` (daily 03:10 KST) | `hyuabot-holiday-updater`       |
 
 ## Container Registry
 
@@ -164,6 +175,7 @@ The `database/` directory contains the canonical PostgreSQL schema.
 | Bus             | `bus_route`, `bus_stop`, `bus_timetable`, `bus_realtime`, `bus_departure_log`             |
 | Subway          | `subway_route`, `subway_station`, `subway_timetable`, `subway_realtime`                   |
 | Shuttle         | `shuttle_route`, `shuttle_stop`, `shuttle_timetable`, `shuttle_period`, `shuttle_holiday` |
+| Holiday         | `public_holiday`, `holiday_sync_state`                                                   |
 | Commute Shuttle | `commute_shuttle_route`, `commute_shuttle_stop`, `commute_shuttle_timetable`              |
 | Campus          | `building`, `room`, `campus`                                                              |
 | Campus Services | `menu`, `restaurant`, `reading_room`                                                      |
