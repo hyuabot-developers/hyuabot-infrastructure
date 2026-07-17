@@ -104,9 +104,8 @@ resolve any reported `(holiday_date, calendar_type)` duplicates and rerun it.
 |---------------------|----------------------------------------|
 | `DB_ID`             | All database-connected containers      |
 | `DB_PASSWORD`       | All database-connected containers      |
-| `BUS_API_KEY`       | bus-timetable-updater, bus-log-updater |
+| `BUS_API_KEY`       | bus-timetable-updater, bus-log-updater, holiday-updater |
 | `METRO_API_KEY`     | subway-realtime-updater                |
-| `DATA_GO_KR_API_KEY` | holiday-updater                       |
 | `WEATHER_API_KEY`   | weather-updater                        |
 | `GOOGLE_PROJECT_ID` | library-updater (Firebase FCM)         |
 | `APNS_TEAM_ID`      | backend Live Activity APNs push        |
