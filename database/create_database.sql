@@ -49,6 +49,7 @@ drop table if exists commute_shuttle_stop cascade;
 
 -- 공휴일 테이블 삭제
 drop table if exists public_holiday cascade;
+drop table if exists holiday_sync_state cascade;
 
 -- 버스 테이블 삭제
 drop table if exists bus_realtime cascade;
@@ -259,7 +260,7 @@ create table if not exists shuttle_holiday(
     calendar_type varchar(15) not null
 );
 -- 셔틀 임시 휴일 인덱스
-create index if not exists idx_shuttle_holiday_date on shuttle_holiday(holiday_date, holiday_type, calendar_type);
+create unique index if not exists idx_shuttle_holiday_date on shuttle_holiday(holiday_date, calendar_type);
 
 -- 셔틀 운행 시간표 뷰
 create materialized view if not exists shuttle_timetable_view as
@@ -490,9 +491,21 @@ create table if not exists public_holiday(
     seq serial primary key,
     holiday_date date not null,
     holiday_name varchar(30) not null,
-    calendar_type varchar(15) not null
+    calendar_type varchar(15) not null,
+    source varchar(20) not null default 'MANUAL',
+    updated_at timestamptz not null default now()
 );
 create unique index if not exists idx_public_holiday_date on public_holiday(holiday_date, calendar_type);
+
+-- 공휴일 자동 동기화 상태
+create table if not exists holiday_sync_state(
+    source varchar(20) primary key,
+    last_attempt_at timestamptz,
+    last_success_at timestamptz,
+    range_start date,
+    range_end date,
+    last_error text
+);
 
 -- 버스 실시간 운행 정보
 create table if not exists bus_realtime(

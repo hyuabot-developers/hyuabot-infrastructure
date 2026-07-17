@@ -650,6 +650,158 @@ data:
                         type: gt
                         params: [0.5]
       - orgId: 1
+        name: holiday-operations
+        folder: HYUabot
+        interval: 1m
+        rules:
+          - uid: holiday-configuration-error
+            title: Holiday timetable configuration error
+            condition: C
+            for: 1m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: critical
+            annotations:
+              summary: "An imminent holiday timetable configuration needs attention"
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  refId: A
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: "max(hyuabot_holiday_configuration_issues{severity=\"error\"}) or vector(0)"
+                  instant: false
+                  range: true
+                  intervalMs: 15000
+                  maxDataPoints: 43200
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [0]
+          - uid: holiday-configuration-warning
+            title: Holiday timetable configuration warning
+            condition: C
+            for: 15m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: "A holiday timetable configuration needs advance review"
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 1200
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  refId: A
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: "max(hyuabot_holiday_configuration_issues{severity=\"warning\"}) or vector(0)"
+                  instant: false
+                  range: true
+                  intervalMs: 15000
+                  maxDataPoints: 43200
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [0]
+          - uid: holiday-sync-stale
+            title: Public holiday synchronization stale
+            condition: C
+            for: 10m
+            noDataState: Alerting
+            execErrState: Error
+            labels:
+              severity: critical
+            annotations:
+              summary: "Official public holidays have not synchronized for 36 hours"
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 1200
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  refId: A
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: "max(hyuabot_holiday_sync_age_seconds)"
+                  instant: false
+                  range: true
+                  intervalMs: 15000
+                  maxDataPoints: 43200
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: outside_range
+                        params: [0, 129600]
+      - orgId: 1
         name: cache
         folder: HYUabot
         interval: 1m

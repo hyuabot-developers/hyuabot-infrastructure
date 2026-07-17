@@ -51,6 +51,59 @@ spec:
               value: hyuabot
           restartPolicy: OnFailure
 ---
+# Korean Public Holiday Loader
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: holiday-cron-job
+  namespace: hyuabot
+spec:
+  schedule: "10 3 * * *"
+  timeZone: "Asia/Seoul"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      activeDeadlineSeconds: 600
+      backoffLimit: 3
+      template:
+        spec:
+          containers:
+          - name: holiday-cron-job
+            image: localhost:5000/hyuabot-holiday-updater
+            resources:
+              requests:
+                memory: "64Mi"
+                cpu: "25m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"
+            env:
+            - name: DATA_GO_KR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: DATA_GO_KR_API_KEY
+            - name: POSTGRES_ID
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: DB_ID
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: DB_PASSWORD
+            - name: POSTGRES_HOST
+              value: hyuabot-database
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: hyuabot
+          restartPolicy: OnFailure
+---
 # Bus Log Loader
 apiVersion: batch/v1
 kind: CronJob
