@@ -83,8 +83,20 @@ Manifests are applied in numbered order:
 ```bash
 kubectl apply -f k8s/1.namespace.yaml
 kubectl apply -f k8s/2.secret.yaml
+
+# Create or update the SQL ConfigMap mounted by the migration job
+kubectl create configmap create-database \
+  --namespace hyuabot \
+  --from-file=database/create_database.sql \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 kubectl apply -f k8s/3.database.yaml
-# Wait for PostgreSQL to be ready, then run the migration job
+
+# Wait for the schema migration to finish before running the data loaders
+kubectl wait --namespace hyuabot \
+  --for=condition=complete job/migration-database \
+  --timeout=300s
+
 kubectl apply -f k8s/4.initial-loader.yml
 kubectl apply -f k8s/5.one-time-loader.yaml
 kubectl apply -f k8s/6.multi-time-loader.yaml
