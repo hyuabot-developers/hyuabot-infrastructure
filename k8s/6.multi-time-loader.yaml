@@ -11,11 +11,14 @@ spec:
   schedule: "* 0,1,5-23 * * *"
   timeZone: "Asia/Seoul"
   concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 300
+      activeDeadlineSeconds: 120
+      backoffLimit: 0
       template:
         spec:
           containers:
@@ -49,7 +52,7 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
-          restartPolicy: OnFailure
+          restartPolicy: Never
 ---
 # Korean Public Holiday Loader
 apiVersion: batch/v1
@@ -112,10 +115,15 @@ metadata:
   namespace: hyuabot
 spec:
   schedule: "0 1 * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      ttlSecondsAfterFinished: 300
+      activeDeadlineSeconds: 3600
+      backoffLimit: 1
       template:
         spec:
           containers:
@@ -145,7 +153,7 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
-          restartPolicy: OnFailure
+          restartPolicy: Never
 ---
 # Subway Realtime Loader
 apiVersion: batch/v1
@@ -161,11 +169,14 @@ spec:
   schedule: "* 0,1,5-23 * * *"
   timeZone: "Asia/Seoul"
   concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 300
+      activeDeadlineSeconds: 120
+      backoffLimit: 0
       template:
         spec:
           containers:
@@ -204,7 +215,7 @@ spec:
                 secretKeyRef:
                   name: secret
                   key: METRO_API_KEY
-          restartPolicy: OnFailure
+          restartPolicy: Never
 ---
 # Reading Room Realtime Loader
 apiVersion: batch/v1
@@ -214,11 +225,15 @@ metadata:
   namespace: hyuabot
 spec:
   schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 300
+      activeDeadlineSeconds: 120
+      backoffLimit: 0
       template:
         spec:
           containers:
@@ -253,7 +268,7 @@ spec:
                 secretKeyRef:
                   name: secret
                   key: GOOGLE_PROJECT_ID
-          restartPolicy: OnFailure
+          restartPolicy: Never
 ---
 # Cafeteria Menu Loader
 apiVersion: batch/v1
@@ -263,12 +278,15 @@ metadata:
   namespace: hyuabot
 spec:
   schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
       ttlSecondsAfterFinished: 300
       activeDeadlineSeconds: 600
+      backoffLimit: 1
       template:
         spec:
           containers:
@@ -298,7 +316,7 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: hyuabot
-          restartPolicy: OnFailure
+          restartPolicy: Never
 ---
 # Weather Menu Loader
 apiVersion: batch/v1
