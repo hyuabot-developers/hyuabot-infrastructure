@@ -12,3 +12,5 @@ database/initializer/.idea/
 .DS_Store
 
 .idea/
+
+k8s/2.secret.yaml

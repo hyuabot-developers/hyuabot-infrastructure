@@ -69,7 +69,7 @@ Manifests are applied in numbered order:
 | File                           | Resource             | Description                                     |
 |--------------------------------|----------------------|-------------------------------------------------|
 | `k8s/1.namespace.yaml`         | Namespace            | Creates the `hyuabot` namespace                 |
-| `k8s/2.secret.yaml`            | Secret / ConfigMap   | API keys, DB credentials                        |
+| `k8s/2.secret.example.yaml`    | Secret template      | API keys, DB credentials                        |
 | `k8s/3.database.yaml`          | Deployment + Service | PostgreSQL 17 and Redis                         |
 | `k8s/4.initial-loader.yml`     | Job                  | Runs `database-initializer` once                |
 | `k8s/5.one-time-loader.yaml`   | Jobs                 | Loads building, bus, subway, shuttle timetables |
@@ -82,6 +82,9 @@ Manifests are applied in numbered order:
 
 ```bash
 kubectl apply -f k8s/1.namespace.yaml
+
+# Create the local Secret manifest and replace every placeholder value
+cp k8s/2.secret.example.yaml k8s/2.secret.yaml
 kubectl apply -f k8s/2.secret.yaml
 
 # Create or update the SQL ConfigMap mounted by the migration job
@@ -110,21 +113,26 @@ Before deploying the holiday updater or the backend holiday audit, apply
 The migration aborts without deleting rows when duplicate shuttle decisions exist;
 resolve any reported `(holiday_date, calendar_type)` duplicates and rerun it.
 
-### Required secrets (`k8s/2.secret.yaml`)
+### Required secrets (`k8s/2.secret.example.yaml`)
 
-| Key                 | Used by                                |
-|---------------------|----------------------------------------|
-| `DB_ID`             | All database-connected containers      |
-| `DB_PASSWORD`       | All database-connected containers      |
-| `BUS_API_KEY`       | bus-timetable-updater, bus-log-updater, holiday-updater |
-| `METRO_API_KEY`     | subway-realtime-updater                |
-| `WEATHER_API_KEY`   | weather-updater                        |
-| `GOOGLE_PROJECT_ID` | library-updater (Firebase FCM)         |
-| `APNS_TEAM_ID`      | backend Live Activity APNs push        |
-| `APNS_KEY_ID`       | backend Live Activity APNs push        |
-| `APNS_PRIVATE_KEY`  | backend Live Activity APNs push        |
-| `NOTIFIER_SERVICE_TOKEN` | backend-to-notifier authentication |
-| `NOTIFIER_GRAFANA_TOKEN` | Grafana webhook authentication     |
+Copy the example to `k8s/2.secret.yaml`, replace every placeholder, and keep the resulting file local. The actual Secret manifest is ignored by Git.
+
+| Key                         | Used by                                                   |
+|-----------------------------|-----------------------------------------------------------|
+| `DB_ID`                     | All database-connected containers                         |
+| `DB_PASSWORD`               | All database-connected containers                         |
+| `BUS_API_KEY`               | bus-timetable-updater, bus-log-updater, holiday-updater   |
+| `METRO_API_KEY`             | subway-realtime-updater                                   |
+| `WEATHER_API_KEY`           | weather-updater                                           |
+| `GOOGLE_PROJECT_ID`         | library-updater (Firebase FCM)                            |
+| `GRAFANA_ADMIN_PASSWORD`    | Grafana administrator                                     |
+| `GRAFANA_SMTP_FROM_ADDRESS` | Grafana alert email sender                                |
+| `GRAFANA_SMTP_PASSWORD`     | Grafana SMTP authentication                               |
+| `APNS_TEAM_ID`              | backend Live Activity APNs push                           |
+| `APNS_KEY_ID`               | backend Live Activity APNs push                           |
+| `APNS_PRIVATE_KEY`          | backend Live Activity APNs push                           |
+| `NOTIFIER_SERVICE_TOKEN`    | backend-to-notifier authentication                        |
+| `NOTIFIER_GRAFANA_TOKEN`    | Grafana webhook authentication                            |
 
 The two notifier tokens must match the values configured on the separate notifier host. Generate independent, random values for each token and do not commit their decoded values.
 
