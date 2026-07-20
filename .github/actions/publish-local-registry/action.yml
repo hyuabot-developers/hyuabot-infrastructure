@@ -20,7 +20,7 @@ runs:
   using: composite
   steps:
     - name: Publish image
-      shell: /usr/bin/zsh -f {0}
+      shell: zsh -f {0}
       env:
         IMAGE_NAME: ${{ inputs.image }}
         USE_MAC: ${{ inputs.use-mac }}
@@ -29,7 +29,7 @@ runs:
       run: "${GITHUB_ACTION_PATH}/publish-image.zsh"
     - name: Remove build-runner image copy
       if: always()
-      shell: /usr/bin/zsh -f {0}
+      shell: zsh -f {0}
       env:
         IMAGE_NAME: ${{ inputs.image }}
       run: docker image rm "${IMAGE_NAME}" >/dev/null 2>&1 || true
