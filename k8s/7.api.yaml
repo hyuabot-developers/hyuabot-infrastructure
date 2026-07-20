@@ -31,7 +31,8 @@ spec:
       - name: api
         image: localhost:5000/hyuabot-backend-kotlin:latest
         ports:
-        - containerPort: 8080
+        - name: http
+          containerPort: 8080
         env:
         - name: JAVA_TOOL_OPTIONS
           value: "-XX:MaxRAMPercentage=75.0"

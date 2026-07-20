@@ -76,7 +76,7 @@ Manifests are applied in numbered order:
 | `k8s/6.multi-time-loader.yaml` | CronJobs             | Recurring realtime and periodic updaters        |
 | `k8s/7.api.yaml`               | Deployment + Service | Kotlin GraphQL backend                          |
 | `k8s/8.kakao.yaml`             | Deployment + Service | Kakao chatbot backend (Go)                      |
-| `k8s/9.monitoring.yaml`        | Prometheus + Grafana | Metrics dashboards and operational alerts      |
+| `k8s/9.monitoring.yaml`        | Prometheus + Grafana | Per-node and per-pod dashboards and alerts      |
 | `k8s/10.cronjob-monitoring.yaml` | Monitoring metrics | CronJob and Kubernetes state metrics            |
 | `k8s/11.metrics-server.yaml`   | Metrics API          | Cross-region K3s resource metrics               |
 
@@ -187,6 +187,8 @@ On an existing cluster, `PersistentVolume.spec.nodeAffinity` cannot be added wit
 
 The two Kotlin backend replicas use a preferred hostname topology spread constraint, so they are distributed across available nodes without becoming unschedulable when only one node is available.
 
+Prometheus discovers the Kotlin backend and per-node Node Exporter proxy pods through the Kubernetes API and attaches their pod and node names to every scraped series. The proxies carry host metrics over the encrypted pod network without exposing Node Exporter across regions. The default Grafana dashboard can filter by node and backend pod, and compares node readiness, replica placement, CPU, memory, filesystem, disk, network, and load across the cluster.
+
 ## Services & Ports
 
 | Service                          | Internal Port | NodePort | Notes          |
@@ -195,7 +197,7 @@ The two Kotlin backend replicas use a preferred hostname topology spread constra
 | `hyuabot-redis`                  | 6379          | 30379    | Redis          |
 | `hyuabot-backend-kotlin-service` | 8080          | 30001    | NodePort; behind Nginx Proxy Manager |
 | Kakao backend                    | 38001         | 30002    | NodePort       |
-| `prometheus`                     | 9090          | —        | ClusterIP; scrapes backend `/actuator/prometheus` |
+| `prometheus`                     | 9090          | —        | ClusterIP; discovers backend and Node Exporter pods |
 | `grafana`                        | 3000          | 30300    | NodePort; behind host Nginx at `grafana.hyuabot.app` |
 
 ## CronJob Schedule Summary
