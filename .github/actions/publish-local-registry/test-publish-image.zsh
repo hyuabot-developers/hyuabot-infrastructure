@@ -24,16 +24,27 @@ function ssh() {
   print -r -- "$*" >> "$test_dir/ssh-calls"
 }
 
-IMAGE_NAME="$image" USE_MAC='false' source "$action_dir/publish-image.zsh"
+(IMAGE_NAME="$image" USE_MAC='false' source "$action_dir/publish-image.zsh")
 grep -qxF "push $image" "$test_dir/docker-calls"
 
-IMAGE_NAME="$image" \
-USE_MAC='true' \
-FIRST_HOST='oracle.example.com' \
-FIRST_USER='ubuntu' \
-  source "$action_dir/publish-image.zsh"
+(
+  IMAGE_NAME="$image" \
+  USE_MAC='true' \
+  FIRST_HOST='oracle.example.com' \
+  FIRST_USER='ubuntu' \
+    source "$action_dir/publish-image.zsh"
+)
 grep -qxF "save $image" "$test_dir/docker-calls"
 grep -qF 'ubuntu@oracle.example.com' "$test_dir/ssh-calls"
+
+(
+  IMAGE_NAME="$image" \
+  USE_MAC='true' \
+  FIRST_HOST='' \
+  FIRST_USER='ubuntu' \
+    source "$action_dir/publish-image.zsh"
+)
+grep -qF 'ubuntu@oracle.hyuabot.app' "$test_dir/ssh-calls"
 
 if (
   IMAGE_NAME='localhost:5000/example/image:latest' \
