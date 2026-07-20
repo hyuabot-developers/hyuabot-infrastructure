@@ -34,6 +34,32 @@ spec:
         - name: http
           containerPort: 8080
         env:
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://hyuabot-database:5432/hyuabot"
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: DB_ID
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: DB_PASSWORD
+        - name: SPRING_DATA_REDIS_HOST
+          value: "hyuabot-redis"
+        - name: SPRING_DATA_REDIS_PORT
+          value: "6379"
+        - name: JASYPT_ENCRYPTOR_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: JASYPT_PASSWORD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: JWT_SECRET
         - name: JAVA_TOOL_OPTIONS
           value: "-XX:MaxRAMPercentage=75.0"
         - name: APNS_LIVE_ACTIVITY_ENABLED

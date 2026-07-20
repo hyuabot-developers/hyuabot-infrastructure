@@ -153,6 +153,8 @@ Copy the example to `k8s/2.secret.yaml`, replace every placeholder, and keep the
 |-----------------------------|-----------------------------------------------------------|
 | `DB_ID`                     | All database-connected containers                         |
 | `DB_PASSWORD`               | All database-connected containers                         |
+| `JASYPT_PASSWORD`           | backend Jasypt configuration at runtime                   |
+| `JWT_SECRET`                | backend JWT signing at runtime                            |
 | `BUS_API_KEY`               | bus-timetable-updater, bus-log-updater, holiday-updater   |
 | `METRO_API_KEY`             | subway-realtime-updater                                   |
 | `WEATHER_API_KEY`           | weather-updater                                           |
@@ -167,6 +169,8 @@ Copy the example to `k8s/2.secret.yaml`, replace every placeholder, and keep the
 | `NOTIFIER_GRAFANA_TOKEN`    | Grafana webhook authentication                            |
 
 The two notifier tokens must match the values configured on the separate notifier host. Generate independent, random values for each token and do not commit their decoded values.
+
+The backend receives database, Redis, Jasypt, and JWT configuration through Pod environment variables. Keep `JASYPT_PASSWORD` and `JWT_SECRET` only in the Kubernetes Secret; they must not be generated in or copied into the application JAR or container image.
 
 ### Operations notifier
 
