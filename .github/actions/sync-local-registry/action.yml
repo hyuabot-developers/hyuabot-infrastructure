@@ -1,0 +1,32 @@
+name: Sync local registry image
+description: Copy one image from the first K3s node registry to the worker registry over SSH.
+
+inputs:
+  image:
+    description: Local registry image reference, including its tag.
+    required: true
+  worker-host:
+    description: SSH hostname of the worker node.
+    required: false
+    default: oracle-2.hyuabot.app
+  worker-user:
+    description: SSH user on the worker node.
+    required: false
+    default: ubuntu
+
+outputs:
+  content-identity:
+    description: SHA-256 of the image config digest and ordered layer digests.
+    value: ${{ steps.sync.outputs.content-identity }}
+
+runs:
+  using: composite
+  steps:
+    - id: sync
+      name: Copy and verify image on worker registry
+      shell: zsh
+      env:
+        IMAGE_NAME: ${{ inputs.image }}
+        WORKER_HOST: ${{ inputs.worker-host }}
+        WORKER_USER: ${{ inputs.worker-user }}
+      run: "${GITHUB_ACTION_PATH}/sync-image.zsh"
