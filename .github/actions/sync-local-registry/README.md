@@ -4,6 +4,8 @@ This composite action copies one tagged image from the registry bound to the fir
 
 After the worker push, the action compares a content identity derived from the image config digest and ordered layer digests. Registry manifest digests are intentionally not compared because different Docker versions can preserve identical image content while converting between OCI and Docker schema v2 manifests.
 
+The final step removes the tagged image from both nodes' Docker stores. Registry manifests and layers remain available for deployment and rollback.
+
 ## Runner prerequisites
 
 - The job runs on the first node after the image has been pushed to `localhost:5000`.

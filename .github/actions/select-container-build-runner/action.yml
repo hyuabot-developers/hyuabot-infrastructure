@@ -1,0 +1,34 @@
+name: Select container build runner
+description: Use an online Mac container builder and fall back only when it is offline.
+
+inputs:
+  token:
+    description: Token that can read organization Actions runners.
+    required: true
+  mac-runner-name:
+    description: Preferred Mac runner name.
+    required: false
+    default: Jeongin-MBP
+  mac-required-label:
+    description: Label proving the Mac runner has a working container engine.
+    required: false
+    default: container-build
+
+outputs:
+  runner:
+    description: JSON runner label array for fromJSON().
+    value: ${{ steps.select.outputs.runner }}
+  use-mac:
+    description: Whether the selected runner is the Mac container builder.
+    value: ${{ steps.select.outputs.use-mac }}
+
+runs:
+  using: composite
+  steps:
+    - id: select
+      shell: /usr/bin/zsh -f {0}
+      env:
+        RUNNER_ADMIN_TOKEN: ${{ inputs.token }}
+        MAC_RUNNER_NAME: ${{ inputs.mac-runner-name }}
+        MAC_REQUIRED_LABEL: ${{ inputs.mac-required-label }}
+      run: python3 "${GITHUB_ACTION_PATH}/select-runner.py"

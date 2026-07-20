@@ -1,0 +1,148 @@
+name: Publish Immutable Image
+
+on:
+  workflow_call:
+    inputs:
+      image-repository:
+        description: Image repository without a tag.
+        required: true
+        type: string
+      workload-kind:
+        description: Optional Kubernetes workload kind to update.
+        required: false
+        default: ""
+        type: string
+      workload-name:
+        description: Optional Kubernetes workload name to update.
+        required: false
+        default: ""
+        type: string
+      container-name:
+        description: Optional Kubernetes container name to update.
+        required: false
+        default: ""
+        type: string
+      build-secret-path:
+        description: Optional build-context file populated from BUILD_SECRET_FILE.
+        required: false
+        default: ""
+        type: string
+      no-cache:
+        description: Build without the retained BuildKit cache.
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      RUNNER_ADMIN_TOKEN:
+        required: false
+      FIRST_HOST:
+        required: false
+      BUILD_SECRET_FILE:
+        required: false
+
+concurrency:
+  group: immutable-image-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  select-build-runner:
+    runs-on: [self-hosted, ARM64, Linux, 1st]
+    outputs:
+      runner: ${{ steps.select.outputs.runner }}
+      use-mac: ${{ steps.select.outputs.use-mac }}
+    steps:
+      - name: Select container build runner
+        id: select
+        uses: hyuabot-developers/hyuabot-infrastructure/.github/actions/select-container-build-runner@4b7fd9c3559c8efc88ee30032bc08a3828916318
+        with:
+          token: ${{ secrets.RUNNER_ADMIN_TOKEN }}
+
+  build-and-publish:
+    needs: select-build-runner
+    runs-on: ${{ fromJSON(needs.select-build-runner.outputs.runner) }}
+    env:
+      IMAGE_NAME: ${{ inputs.image-repository }}:${{ github.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Create build secret file
+        if: inputs.build-secret-path != ''
+        env:
+          BUILD_SECRET_FILE: ${{ secrets.BUILD_SECRET_FILE }}
+          BUILD_SECRET_PATH: ${{ inputs.build-secret-path }}
+        shell: /usr/bin/zsh -f {0}
+        run: |
+          if [[ -z "$BUILD_SECRET_FILE" ]]; then
+            print -u2 -r -- 'BUILD_SECRET_FILE is required.'
+            exit 1
+          fi
+          print -rn -- "$BUILD_SECRET_FILE" > "$BUILD_SECRET_PATH"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          keep-state: true
+          cleanup: false
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: ${{ env.IMAGE_NAME }}
+          no-cache: ${{ inputs.no-cache }}
+      - name: Publish image to first-node registry
+        uses: hyuabot-developers/hyuabot-infrastructure/.github/actions/publish-local-registry@4b7fd9c3559c8efc88ee30032bc08a3828916318
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          use-mac: ${{ needs.select-build-runner.outputs.use-mac }}
+          first-host: ${{ secrets.FIRST_HOST }}
+      - name: Remove build secret file
+        if: always() && inputs.build-secret-path != ''
+        env:
+          BUILD_SECRET_PATH: ${{ inputs.build-secret-path }}
+        shell: /usr/bin/zsh -f {0}
+        run: rm -f -- "$BUILD_SECRET_PATH"
+
+  sync-and-deploy:
+    needs: build-and-publish
+    runs-on: [self-hosted, ARM64, Linux, 1st]
+    env:
+      IMAGE_NAME: ${{ inputs.image-repository }}:${{ github.sha }}
+    steps:
+      - name: Sync image to worker registry
+        uses: hyuabot-developers/hyuabot-infrastructure/.github/actions/sync-local-registry@4b7fd9c3559c8efc88ee30032bc08a3828916318
+        with:
+          image: ${{ env.IMAGE_NAME }}
+      - name: Update Kubernetes workload image
+        if: inputs.workload-kind != ''
+        env:
+          WORKLOAD_KIND: ${{ inputs.workload-kind }}
+          WORKLOAD_NAME: ${{ inputs.workload-name }}
+          CONTAINER_NAME: ${{ inputs.container-name }}
+        shell: /usr/bin/zsh -f {0}
+        run: |
+          kubectl -n hyuabot set image \
+            "${WORKLOAD_KIND}/${WORKLOAD_NAME}" \
+            "${CONTAINER_NAME}=${IMAGE_NAME}"
+
+          deployed_image="$(
+            kubectl -n hyuabot get \
+              "${WORKLOAD_KIND}/${WORKLOAD_NAME}" \
+              -o json |
+            CONTAINER_NAME="$CONTAINER_NAME" python3 -c '
+          import json
+          import os
+          import sys
+
+          resource = json.load(sys.stdin)
+          spec = resource["spec"]
+          if "jobTemplate" in spec:
+              containers = spec["jobTemplate"]["spec"]["template"]["spec"]["containers"]
+          else:
+              containers = spec["template"]["spec"]["containers"]
+
+          name = os.environ["CONTAINER_NAME"]
+          print(next(container["image"] for container in containers if container["name"] == name))
+          '
+          )"
+          [[ "$deployed_image" == "$IMAGE_NAME" ]]
