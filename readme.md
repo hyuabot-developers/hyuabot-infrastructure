@@ -77,6 +77,8 @@ Manifests are applied in numbered order:
 | `k8s/7.api.yaml`               | Deployment + Service | Kotlin GraphQL backend                          |
 | `k8s/8.kakao.yaml`             | Deployment + Service | Kakao chatbot backend (Go)                      |
 | `k8s/9.monitoring.yaml`        | Prometheus + Grafana | Metrics dashboards and operational alerts      |
+| `k8s/10.cronjob-monitoring.yaml` | Monitoring metrics | CronJob and Kubernetes state metrics            |
+| `k8s/11.metrics-server.yaml`   | Metrics API          | Cross-region K3s resource metrics               |
 
 ### Applying the stack
 
@@ -106,12 +108,42 @@ kubectl apply -f k8s/6.multi-time-loader.yaml
 kubectl apply -f k8s/7.api.yaml
 kubectl apply -f k8s/8.kakao.yaml
 kubectl apply -f k8s/9.monitoring.yaml
+kubectl apply -f k8s/10.cronjob-monitoring.yaml
 ```
 
 Before deploying the holiday updater or the backend holiday audit, apply
 `database/migrations/20260717_holiday_automation.sql` to the existing database.
 The migration aborts without deleting rows when duplicate shuttle decisions exist;
 resolve any reported `(holiday_date, calendar_type)` duplicates and rerun it.
+
+### Cross-region metrics-server
+
+K3s's packaged metrics-server prefers one node address type for every node. In this cross-region cluster, the control-plane node is reachable through its private address while the worker kubelet is reachable through its public address. The custom metrics-server maps each node hostname to the address reachable from `personal-project-vm`.
+
+Disable the packaged component in `/etc/rancher/k3s/config.yaml` before deploying the custom manifest:
+
+```yaml
+disable:
+  - servicelb
+  - traefik
+  - metrics-server
+```
+
+Copy `k8s/11.metrics-server.yaml` to `/var/lib/rancher/k3s/server/manifests/hyuabot-metrics-server.yaml`, then restart K3s. K3s automatically deploys files in that directory.
+
+```bash
+sudo install -m 0600 \
+  k8s/11.metrics-server.yaml \
+  /var/lib/rancher/k3s/server/manifests/hyuabot-metrics-server.yaml
+sudo systemctl restart k3s
+sudo k3s kubectl rollout status \
+  --namespace kube-system \
+  deployment/metrics-server \
+  --timeout=180s
+sudo k3s kubectl top nodes
+```
+
+The custom Deployment is pinned to `personal-project-vm`. If a node name or address changes, update `nodeSelector` and `hostAliases` before restarting K3s.
 
 ### Required secrets (`k8s/2.secret.example.yaml`)
 
@@ -149,7 +181,11 @@ This feature has no PostgreSQL schema or data migration.
 
 ### Persistent storage
 
-PostgreSQL data is persisted to `/mnt/data/postgres-pv-volume` on the host node (5 GiB PersistentVolume).
+PostgreSQL data is persisted to `/mnt/data/postgres-pv-volume` on `personal-project-vm` (5 GiB PersistentVolume). The PersistentVolume node affinity and database Deployment node selector keep the host-local data on that node when workers join the cluster.
+
+On an existing cluster, `PersistentVolume.spec.nodeAffinity` cannot be added with a normal `kubectl apply`. Scale the database down and recreate only the retained PV/PVC objects before applying this manifest. The host directory must not be deleted.
+
+The two Kotlin backend replicas use a preferred hostname topology spread constraint, so they are distributed across available nodes without becoming unschedulable when only one node is available.
 
 ## Services & Ports
 
@@ -157,7 +193,7 @@ PostgreSQL data is persisted to `/mnt/data/postgres-pv-volume` on the host node 
 |----------------------------------|---------------|----------|----------------|
 | `hyuabot-database`               | 5432          | 30432    | PostgreSQL     |
 | `hyuabot-redis`                  | 6379          | 30379    | Redis          |
-| `hyuabot-backend-kotlin-service` | 8080          | —        | ClusterIP only |
+| `hyuabot-backend-kotlin-service` | 8080          | 30001    | NodePort; behind Nginx Proxy Manager |
 | Kakao backend                    | 38001         | 30002    | NodePort       |
 | `prometheus`                     | 9090          | —        | ClusterIP; scrapes backend `/actuator/prometheus` |
 | `grafana`                        | 3000          | 30300    | NodePort; behind host Nginx at `grafana.hyuabot.app` |

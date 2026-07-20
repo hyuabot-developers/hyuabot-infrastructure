@@ -54,10 +54,10 @@ spec:
           resources:
             requests:
               memory: "256Mi"
-              cpu: "100m"
+              cpu: "50m"
             limits:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "300m"
           volumeMounts:
             - name: config
               mountPath: /etc/prometheus
@@ -114,10 +114,10 @@ spec:
           resources:
             requests:
               memory: "32Mi"
-              cpu: "50m"
+              cpu: "25m"
             limits:
               memory: "128Mi"
-              cpu: "200m"
+              cpu: "100m"
           volumeMounts:
             - name: proc
               mountPath: /host/proc
@@ -949,10 +949,10 @@ spec:
           resources:
             requests:
               memory: "128Mi"
-              cpu: "100m"
+              cpu: "25m"
             limits:
               memory: "256Mi"
-              cpu: "500m"
+              cpu: "200m"
           volumeMounts:
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources

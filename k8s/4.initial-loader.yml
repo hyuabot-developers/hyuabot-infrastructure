@@ -12,6 +12,13 @@ spec:
       containers:
       - name: initialize-database
         image: localhost:5000/hyuabot-database-initializer
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "25m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
         env:
         - name: POSTGRES_ID
           valueFrom:

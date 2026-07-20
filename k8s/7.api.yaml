@@ -20,6 +20,13 @@ spec:
         app: hyuabot-backend-kotlin
     spec:
       terminationGracePeriodSeconds: 80
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: hyuabot-backend-kotlin
       containers:
       - name: api
         image: localhost:5000/hyuabot-backend-kotlin:latest
@@ -63,10 +70,10 @@ spec:
         resources:
           requests:
             memory: "1Gi"
-            cpu: "200m"
+            cpu: "150m"
           limits:
-            memory: "2Gi"
-            cpu: "1500m"
+            memory: "1536Mi"
+            cpu: "1000m"
         lifecycle:
           preStop:
             exec:
@@ -95,9 +102,12 @@ metadata:
   name: hyuabot-backend-kotlin-service
   namespace: hyuabot
 spec:
+  type: NodePort
   selector:
     app: hyuabot-backend-kotlin
   ports:
-  - protocol: TCP
+  - name: http
+    protocol: TCP
     port: 8080
     targetPort: 8080
+    nodePort: 30001
