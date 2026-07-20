@@ -26,7 +26,7 @@ runs:
   using: composite
   steps:
     - id: select
-      shell: /usr/bin/zsh -f {0}
+      shell: zsh -f {0}
       env:
         RUNNER_ADMIN_TOKEN: ${{ inputs.token }}
         MAC_RUNNER_NAME: ${{ inputs.mac-runner-name }}

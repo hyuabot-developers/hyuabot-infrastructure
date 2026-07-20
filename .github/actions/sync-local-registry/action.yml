@@ -24,7 +24,7 @@ runs:
   steps:
     - id: sync
       name: Copy and verify image on worker registry
-      shell: /usr/bin/zsh -f {0}
+      shell: zsh -f {0}
       env:
         IMAGE_NAME: ${{ inputs.image }}
         WORKER_HOST: ${{ inputs.worker-host }}
@@ -32,7 +32,7 @@ runs:
       run: "${GITHUB_ACTION_PATH}/sync-image.zsh"
     - name: Remove local image copies
       if: always()
-      shell: /usr/bin/zsh -f {0}
+      shell: zsh -f {0}
       env:
         IMAGE_NAME: ${{ inputs.image }}
         WORKER_HOST: ${{ inputs.worker-host }}

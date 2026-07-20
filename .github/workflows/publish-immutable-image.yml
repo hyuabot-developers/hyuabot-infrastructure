@@ -70,7 +70,7 @@ jobs:
         env:
           BUILD_SECRET_FILE: ${{ secrets.BUILD_SECRET_FILE }}
           BUILD_SECRET_PATH: ${{ inputs.build-secret-path }}
-        shell: /usr/bin/zsh -f {0}
+        shell: zsh -f {0}
         run: |
           if [[ -z "$BUILD_SECRET_FILE" ]]; then
             print -u2 -r -- 'BUILD_SECRET_FILE is required.'
@@ -100,7 +100,7 @@ jobs:
         if: always() && inputs.build-secret-path != ''
         env:
           BUILD_SECRET_PATH: ${{ inputs.build-secret-path }}
-        shell: /usr/bin/zsh -f {0}
+        shell: zsh -f {0}
         run: rm -f -- "$BUILD_SECRET_PATH"
 
   sync-and-deploy:
@@ -119,7 +119,7 @@ jobs:
           WORKLOAD_KIND: ${{ inputs.workload-kind }}
           WORKLOAD_NAME: ${{ inputs.workload-name }}
           CONTAINER_NAME: ${{ inputs.container-name }}
-        shell: /usr/bin/zsh -f {0}
+        shell: zsh -f {0}
         run: |
           kubectl -n hyuabot set image \
             "${WORKLOAD_KIND}/${WORKLOAD_NAME}" \
