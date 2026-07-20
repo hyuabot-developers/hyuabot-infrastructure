@@ -1,14 +1,10 @@
 name: Select container build runner
-description: Prefer an available Mac container builder and otherwise use the first K3s node.
+description: Use an online Mac container builder and fall back only when it is offline.
 
 inputs:
   token:
     description: Token that can read organization Actions runners.
-    required: false
-  mac-enabled:
-    description: Whether the workflow has the SSH configuration required for Mac publishing.
-    required: false
-    default: "false"
+    required: true
   mac-runner-name:
     description: Preferred Mac runner name.
     required: false
@@ -33,7 +29,6 @@ runs:
       shell: /usr/bin/zsh -f {0}
       env:
         RUNNER_ADMIN_TOKEN: ${{ inputs.token }}
-        MAC_ENABLED: ${{ inputs.mac-enabled }}
         MAC_RUNNER_NAME: ${{ inputs.mac-runner-name }}
         MAC_REQUIRED_LABEL: ${{ inputs.mac-required-label }}
       run: python3 "${GITHUB_ACTION_PATH}/select-runner.py"

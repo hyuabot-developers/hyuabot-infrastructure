@@ -20,20 +20,38 @@ def runner(name: str, status: str, busy: bool, labels: list[str]) -> dict:
     }
 
 
-assert module.mac_is_available(
+assert module.mac_status(
     [runner("Jeongin-MBP", "online", False, ["macOS", "container-build"])],
     "Jeongin-MBP",
     "container-build",
-)
-assert not module.mac_is_available(
-    [runner("Jeongin-MBP", "online", False, ["macOS"])],
-    "Jeongin-MBP",
-    "container-build",
-)
-assert not module.mac_is_available(
+) == "online"
+assert module.mac_status(
     [runner("Jeongin-MBP", "online", True, ["macOS", "container-build"])],
     "Jeongin-MBP",
     "container-build",
-)
+) == "online"
+assert module.mac_status(
+    [runner("Jeongin-MBP", "offline", False, ["macOS", "container-build"])],
+    "Jeongin-MBP",
+    "container-build",
+) == "offline"
+
+try:
+    module.mac_status(
+        [runner("Jeongin-MBP", "online", False, ["macOS"])],
+        "Jeongin-MBP",
+        "container-build",
+    )
+except RuntimeError as error:
+    assert "missing required label" in str(error)
+else:
+    raise AssertionError("missing container-build label must fail selection")
+
+try:
+    module.mac_status([], "Jeongin-MBP", "container-build")
+except RuntimeError as error:
+    assert "was not found" in str(error)
+else:
+    raise AssertionError("missing Mac runner must fail selection")
 
 print("SELECT_CONTAINER_BUILD_RUNNER_TEST_OK")
