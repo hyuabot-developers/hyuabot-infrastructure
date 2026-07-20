@@ -1,0 +1,35 @@
+name: Publish to first-node registry
+description: Push a local image directly or transfer a Mac-built image to the first node over SSH.
+
+inputs:
+  image:
+    description: Local registry image reference, including its immutable tag.
+    required: true
+  use-mac:
+    description: Whether this action is running on the Mac container builder.
+    required: true
+  first-host:
+    description: First-node SSH hostname or user@hostname used by a Mac build.
+    required: false
+  first-user:
+    description: Default SSH user when first-host does not contain one.
+    required: false
+    default: ubuntu
+
+runs:
+  using: composite
+  steps:
+    - name: Publish image
+      shell: /usr/bin/zsh -f {0}
+      env:
+        IMAGE_NAME: ${{ inputs.image }}
+        USE_MAC: ${{ inputs.use-mac }}
+        FIRST_HOST: ${{ inputs.first-host }}
+        FIRST_USER: ${{ inputs.first-user }}
+      run: "${GITHUB_ACTION_PATH}/publish-image.zsh"
+    - name: Remove build-runner image copy
+      if: always()
+      shell: /usr/bin/zsh -f {0}
+      env:
+        IMAGE_NAME: ${{ inputs.image }}
+      run: docker image rm "${IMAGE_NAME}" >/dev/null 2>&1 || true

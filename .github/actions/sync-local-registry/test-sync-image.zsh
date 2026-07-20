@@ -32,6 +32,13 @@ function docker() {
     save)
       print -rn -- 'mock-image-archive'
       ;;
+    image)
+      if [[ "$2" != 'rm' ]]; then
+        print -u2 -r -- "Unexpected docker image command: $*"
+        return 1
+      fi
+      print -r -- "$3" >> "$test_dir/removed-images"
+      ;;
     *)
       print -u2 -r -- "Unexpected docker command: $*"
       return 1
@@ -65,6 +72,15 @@ GITHUB_OUTPUT="$test_dir/github-output" \
 grep -qxF \
   "content-identity=$expected_identity" \
   "$test_dir/github-output"
+
+IMAGE_NAME='localhost:5000/example/image:latest' \
+WORKER_HOST='worker.example.com' \
+WORKER_USER='ubuntu' \
+  source "$action_dir/cleanup-image.zsh"
+
+grep -qxF \
+  'localhost:5000/example/image:latest' \
+  "$test_dir/removed-images"
 
 if (
   IMAGE_NAME='localhost:5000/example/image:latest;uname' \

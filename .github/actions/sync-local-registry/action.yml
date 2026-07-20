@@ -30,3 +30,11 @@ runs:
         WORKER_HOST: ${{ inputs.worker-host }}
         WORKER_USER: ${{ inputs.worker-user }}
       run: "${GITHUB_ACTION_PATH}/sync-image.zsh"
+    - name: Remove local image copies
+      if: always()
+      shell: /usr/bin/zsh -f {0}
+      env:
+        IMAGE_NAME: ${{ inputs.image }}
+        WORKER_HOST: ${{ inputs.worker-host }}
+        WORKER_USER: ${{ inputs.worker-user }}
+      run: "${GITHUB_ACTION_PATH}/cleanup-image.zsh"
