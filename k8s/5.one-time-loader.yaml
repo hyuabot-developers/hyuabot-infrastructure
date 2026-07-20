@@ -12,6 +12,13 @@ spec:
       containers:
       - name: building-initialize
         image: localhost:5000/hyuabot-building-updater
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "25m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
         env:
         - name: POSTGRES_ID
           valueFrom:
@@ -45,6 +52,13 @@ spec:
       containers:
       - name: bus-timetable-initialize
         image: localhost:5000/hyuabot-bus-timetable-updater
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "25m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
         env:
         - name: POSTGRES_ID
           valueFrom:
@@ -78,6 +92,13 @@ spec:
       containers:
       - name: subway-timetable-initialize
         image: localhost:5000/hyuabot-subway-timetable-updater
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "25m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
         env:
         - name: POSTGRES_ID
           valueFrom:
@@ -111,6 +132,13 @@ spec:
       containers:
       - name: shuttle-timetable-initialize
         image: localhost:5000/hyuabot-shuttle-timetable-updater
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "25m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
         env:
         - name: POSTGRES_ID
           valueFrom:

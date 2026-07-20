@@ -1,5 +1,35 @@
 ---
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: hyuabot
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus-pod-discovery
+  namespace: hyuabot
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-pod-discovery
+  namespace: hyuabot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-pod-discovery
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: hyuabot
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
@@ -12,11 +42,45 @@ data:
     scrape_configs:
       - job_name: hyuabot-backend-kotlin
         metrics_path: /actuator/prometheus
-        static_configs:
-          - targets: ["hyuabot-backend-kotlin-service:8080"]
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [hyuabot]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: hyuabot-backend-kotlin
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: http
+          - source_labels: [__meta_kubernetes_pod_phase]
+            action: keep
+            regex: Running
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
       - job_name: node-exporter
-        static_configs:
-          - targets: ["node-exporter:9100"]
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [hyuabot]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: node-exporter-proxy
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: metrics
+          - source_labels: [__meta_kubernetes_pod_phase]
+            action: keep
+            regex: Running
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: instance
       - job_name: redis-exporter
         static_configs:
           - targets: ["hyuabot-redis-exporter:9121"]
@@ -42,6 +106,7 @@ spec:
       labels:
         app: prometheus
     spec:
+      serviceAccountName: prometheus
       containers:
         - name: prometheus
           image: prom/prometheus:v2.53.0
@@ -54,10 +119,10 @@ spec:
           resources:
             requests:
               memory: "256Mi"
-              cpu: "100m"
+              cpu: "50m"
             limits:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "300m"
           volumeMounts:
             - name: config
               mountPath: /etc/prometheus
@@ -110,14 +175,15 @@ spec:
             - "--path.rootfs=/host/root"
             - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)"
           ports:
-            - containerPort: 9100
+            - name: metrics
+              containerPort: 9100
           resources:
             requests:
               memory: "32Mi"
-              cpu: "50m"
+              cpu: "25m"
             limits:
               memory: "128Mi"
-              cpu: "200m"
+              cpu: "100m"
           volumeMounts:
             - name: proc
               mountPath: /host/proc
@@ -152,6 +218,74 @@ spec:
     - protocol: TCP
       port: 9100
       targetPort: 9100
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-exporter-proxy-config
+  namespace: hyuabot
+data:
+  default.conf.template: |
+    server {
+      listen 9100;
+      server_name _;
+
+      location / {
+        proxy_pass http://${NODE_IP}:9100;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 10s;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter-proxy
+  namespace: hyuabot
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter-proxy
+  template:
+    metadata:
+      labels:
+        app: node-exporter-proxy
+    spec:
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: proxy
+          image: nginx:1.27-alpine
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          ports:
+            - name: metrics
+              containerPort: 9100
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "5m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/templates/default.conf.template
+              subPath: default.conf.template
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: node-exporter-proxy-config
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -197,8 +331,11 @@ data:
     {
       "title": "HYUabot Backend",
       "uid": "hyuabot-backend",
+      "description": "Backend RED metrics, JVM health, and per-node Kubernetes resource distribution.",
+      "tags": ["hyuabot", "kubernetes", "multi-node"],
       "timezone": "browser",
       "schemaVersion": 39,
+      "version": 2,
       "refresh": "15s",
       "time": { "from": "now-1h", "to": "now" },
       "templating": {
@@ -210,6 +347,30 @@ data:
             "query": "label_values(jvm_info, application)",
             "refresh": 1,
             "includeAll": false
+          },
+          {
+            "name": "node",
+            "label": "Node",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "query": "label_values(up{job=\"node-exporter\"}, node)",
+            "refresh": 1,
+            "multi": true,
+            "includeAll": true,
+            "allValue": ".*",
+            "current": { "selected": true, "text": "All", "value": "$__all" }
+          },
+          {
+            "name": "backend_pod",
+            "label": "Backend Pod",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "query": "label_values(jvm_info{application=\"$application\", node=~\"$node\"}, pod)",
+            "refresh": 1,
+            "multi": true,
+            "includeAll": true,
+            "allValue": ".*",
+            "current": { "selected": true, "text": "All", "value": "$__all" }
           }
         ]
       },
@@ -220,41 +381,41 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
           "fieldConfig": { "defaults": { "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
-          "targets": [ { "expr": "max(hikaricp_connections_pending{application=\"$application\"})", "refId": "A" } ]
+          "targets": [ { "expr": "max(hikaricp_connections_pending{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"})", "refId": "A" } ]
         },
         {
           "title": "DB active", "type": "stat",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
-          "targets": [ { "expr": "max(hikaricp_connections_active{application=\"$application\"})", "refId": "A" } ]
+          "targets": [ { "expr": "max(hikaricp_connections_active{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"})", "refId": "A" } ]
         },
         {
           "title": "Heap used %", "type": "gauge",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
           "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
-          "targets": [ { "expr": "100 * sum(jvm_memory_used_bytes{application=\"$application\", area=\"heap\"}) / sum(jvm_memory_max_bytes{application=\"$application\", area=\"heap\"})", "refId": "A" } ]
+          "targets": [ { "expr": "max(100 * sum by (pod) (jvm_memory_used_bytes{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", area=\"heap\"}) / sum by (pod) (jvm_memory_max_bytes{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", area=\"heap\"}))", "refId": "A" } ]
         },
         {
           "title": "HTTP req/s", "type": "stat",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
           "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-          "targets": [ { "expr": "sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m]))", "refId": "A" } ]
+          "targets": [ { "expr": "sum(rate(http_server_requests_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]))", "refId": "A" } ]
         },
         {
           "title": "HTTP 5xx %", "type": "stat",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
           "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
-          "targets": [ { "expr": "100 * (sum(rate(http_server_requests_seconds_count{application=\"$application\", status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m])), 0.001)", "refId": "A" } ]
+          "targets": [ { "expr": "100 * (sum(rate(http_server_requests_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])), 0.001)", "refId": "A" } ]
         },
         {
-          "title": "Node CPU %", "type": "stat",
+          "title": "Max node CPU %", "type": "stat",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
           "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
-          "targets": [ { "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))", "refId": "A" } ]
+          "targets": [ { "expr": "max(100 * (1 - avg by (node) (rate(node_cpu_seconds_total{job=\"node-exporter\", node=~\"$node\", mode=\"idle\"}[5m]))))", "refId": "A" } ]
         },
 
         { "type": "row", "title": "DB Pool (HikariCP)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 } },
@@ -263,17 +424,17 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 12, "x": 0, "y": 6 },
           "targets": [
-            { "expr": "hikaricp_connections_active{application=\"$application\"}", "legendFormat": "active", "refId": "A" },
-            { "expr": "hikaricp_connections_idle{application=\"$application\"}", "legendFormat": "idle", "refId": "B" },
-            { "expr": "hikaricp_connections_pending{application=\"$application\"}", "legendFormat": "pending", "refId": "C" },
-            { "expr": "hikaricp_connections_max{application=\"$application\"}", "legendFormat": "max", "refId": "D" }
+            { "expr": "hikaricp_connections_active{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}} active", "refId": "A" },
+            { "expr": "hikaricp_connections_idle{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}} idle", "refId": "B" },
+            { "expr": "hikaricp_connections_pending{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}} pending", "refId": "C" },
+            { "expr": "hikaricp_connections_max{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}} max", "refId": "D" }
           ]
         },
         {
           "title": "Pending (waiting threads)", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 12, "x": 12, "y": 6 },
-          "targets": [ { "expr": "hikaricp_connections_pending{application=\"$application\"}", "legendFormat": "pending", "refId": "A" } ]
+          "targets": [ { "expr": "hikaricp_connections_pending{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}}", "refId": "A" } ]
         },
         {
           "title": "Acquire time", "type": "timeseries",
@@ -281,15 +442,15 @@ data:
           "gridPos": { "h": 7, "w": 8, "x": 0, "y": 13 },
           "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
           "targets": [
-            { "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"$application\"}[5m]) / clamp_min(rate(hikaricp_connections_acquire_seconds_count{application=\"$application\"}[5m]), 0.001)", "legendFormat": "avg", "refId": "A" },
-            { "expr": "hikaricp_connections_acquire_seconds_max{application=\"$application\"}", "legendFormat": "max", "refId": "B" }
+            { "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]) / clamp_min(rate(hikaricp_connections_acquire_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]), 0.001)", "legendFormat": "{{pod}} avg", "refId": "A" },
+            { "expr": "hikaricp_connections_acquire_seconds_max{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}} max", "refId": "B" }
           ]
         },
         {
           "title": "Connection timeouts", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 8, "x": 8, "y": 13 },
-          "targets": [ { "expr": "rate(hikaricp_connections_timeout_total{application=\"$application\"}[5m])", "legendFormat": "timeouts/s", "refId": "A" } ]
+          "targets": [ { "expr": "rate(hikaricp_connections_timeout_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])", "legendFormat": "{{pod}}", "refId": "A" } ]
         },
         {
           "title": "Usage time", "type": "timeseries",
@@ -297,7 +458,7 @@ data:
           "gridPos": { "h": 7, "w": 8, "x": 16, "y": 13 },
           "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
           "targets": [
-            { "expr": "rate(hikaricp_connections_usage_seconds_sum{application=\"$application\"}[5m]) / clamp_min(rate(hikaricp_connections_usage_seconds_count{application=\"$application\"}[5m]), 0.001)", "legendFormat": "avg", "refId": "A" }
+            { "expr": "rate(hikaricp_connections_usage_seconds_sum{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]) / clamp_min(rate(hikaricp_connections_usage_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]), 0.001)", "legendFormat": "{{pod}} avg", "refId": "A" }
           ]
         },
 
@@ -307,14 +468,14 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 12, "x": 0, "y": 21 },
           "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-          "targets": [ { "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"$application\"}[5m]))", "legendFormat": "{{status}}", "refId": "A" } ]
+          "targets": [ { "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]))", "legendFormat": "{{status}}", "refId": "A" } ]
         },
         {
           "title": "Error rate %", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 12, "x": 12, "y": 21 },
           "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
-          "targets": [ { "expr": "100 * (sum(rate(http_server_requests_seconds_count{application=\"$application\", status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"$application\"}[5m])), 0.001)", "legendFormat": "5xx %", "refId": "A" } ]
+          "targets": [ { "expr": "100 * (sum(rate(http_server_requests_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])), 0.001)", "legendFormat": "5xx %", "refId": "A" } ]
         },
         {
           "title": "Latency percentiles", "type": "timeseries",
@@ -322,9 +483,9 @@ data:
           "gridPos": { "h": 7, "w": 12, "x": 0, "y": 28 },
           "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
           "targets": [
-            { "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])))", "legendFormat": "p50", "refId": "A" },
-            { "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])))", "legendFormat": "p95", "refId": "B" },
-            { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\"}[5m])))", "legendFormat": "p99", "refId": "C" }
+            { "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])))", "legendFormat": "p50", "refId": "A" },
+            { "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])))", "legendFormat": "p95", "refId": "B" },
+            { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])))", "legendFormat": "p99", "refId": "C" }
           ]
         },
         {
@@ -332,7 +493,7 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 12, "x": 12, "y": 28 },
           "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-          "targets": [ { "expr": "topk(5, sum by (uri) (rate(http_server_requests_seconds_count{application=\"$application\"}[5m])))", "legendFormat": "{{uri}}", "refId": "A" } ]
+          "targets": [ { "expr": "topk(5, sum by (uri) (rate(http_server_requests_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])))", "legendFormat": "{{uri}}", "refId": "A" } ]
         },
 
         {
@@ -341,7 +502,7 @@ data:
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 35 },
           "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [ { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "displayName", "value": "Requests (1h)" } ] } ] },
           "options": { "sortBy": [ { "displayName": "Requests (1h)", "desc": true } ] },
-          "targets": [ { "expr": "sort_desc(sum by (uri, status) (increase(http_server_requests_seconds_count{application=\"$application\", status!~\"2..\"}[1h])))", "format": "table", "instant": true, "legendFormat": "", "refId": "A" } ],
+          "targets": [ { "expr": "sort_desc(sum by (uri, status) (increase(http_server_requests_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", status!~\"2..\"}[1h])))", "format": "table", "instant": true, "legendFormat": "", "refId": "A" } ],
           "transformations": [ { "id": "organize", "options": { "excludeByName": { "Time": true, "application": true, "instance": true, "job": true }, "renameByName": { "uri": "URI", "status": "Status Code", "Value": "Requests (1h)" } } } ]
         },
 
@@ -352,9 +513,9 @@ data:
           "gridPos": { "h": 7, "w": 12, "x": 0, "y": 45 },
           "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
           "targets": [
-            { "expr": "sum(jvm_memory_used_bytes{application=\"$application\", area=\"heap\"})", "legendFormat": "heap used", "refId": "A" },
-            { "expr": "sum(jvm_memory_max_bytes{application=\"$application\", area=\"heap\"})", "legendFormat": "heap max", "refId": "B" },
-            { "expr": "sum(jvm_memory_used_bytes{application=\"$application\", area=\"nonheap\"})", "legendFormat": "nonheap used", "refId": "C" }
+            { "expr": "sum by (pod) (jvm_memory_used_bytes{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", area=\"heap\"})", "legendFormat": "{{pod}} heap used", "refId": "A" },
+            { "expr": "sum by (pod) (jvm_memory_max_bytes{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", area=\"heap\"})", "legendFormat": "{{pod}} heap max", "refId": "B" },
+            { "expr": "sum by (pod) (jvm_memory_used_bytes{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", area=\"nonheap\"})", "legendFormat": "{{pod}} nonheap used", "refId": "C" }
           ]
         },
         {
@@ -362,8 +523,8 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 12, "x": 12, "y": 45 },
           "targets": [
-            { "expr": "sum(rate(jvm_gc_pause_seconds_sum{application=\"$application\"}[5m]))", "legendFormat": "pause time/s", "refId": "A" },
-            { "expr": "sum(rate(jvm_gc_pause_seconds_count{application=\"$application\"}[5m]))", "legendFormat": "pauses/s", "refId": "B" }
+            { "expr": "sum by (pod) (rate(jvm_gc_pause_seconds_sum{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]))", "legendFormat": "{{pod}} pause time/s", "refId": "A" },
+            { "expr": "sum by (pod) (rate(jvm_gc_pause_seconds_count{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]))", "legendFormat": "{{pod}} pauses/s", "refId": "B" }
           ]
         },
         {
@@ -371,9 +532,9 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 8, "x": 0, "y": 52 },
           "targets": [
-            { "expr": "jvm_threads_live_threads{application=\"$application\"}", "legendFormat": "live", "refId": "A" },
-            { "expr": "jvm_threads_daemon_threads{application=\"$application\"}", "legendFormat": "daemon", "refId": "B" },
-            { "expr": "jvm_threads_peak_threads{application=\"$application\"}", "legendFormat": "peak", "refId": "C" }
+            { "expr": "jvm_threads_live_threads{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}} live", "refId": "A" },
+            { "expr": "jvm_threads_daemon_threads{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}} daemon", "refId": "B" },
+            { "expr": "jvm_threads_peak_threads{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}} peak", "refId": "C" }
           ]
         },
         {
@@ -381,133 +542,154 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 8, "x": 8, "y": 52 },
           "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
-          "targets": [ { "expr": "rate(jvm_gc_memory_allocated_bytes_total{application=\"$application\"}[5m])", "legendFormat": "allocated/s", "refId": "A" } ]
+          "targets": [ { "expr": "rate(jvm_gc_memory_allocated_bytes_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])", "legendFormat": "{{pod}}", "refId": "A" } ]
         },
         {
           "title": "Classes loaded", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 7, "w": 8, "x": 16, "y": 52 },
-          "targets": [ { "expr": "jvm_classes_loaded_classes{application=\"$application\"}", "legendFormat": "loaded", "refId": "A" } ]
+          "targets": [ { "expr": "jvm_classes_loaded_classes{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}", "legendFormat": "{{pod}}", "refId": "A" } ]
         },
 
         { "type": "row", "title": "System (Node)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 59 } },
         {
-          "title": "CPU by mode", "type": "timeseries",
+          "title": "Node readiness", "type": "stat",
+          "description": "Kubernetes Ready condition for each selected node (1 = Ready).",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 60 },
-          "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
-          "targets": [ { "expr": "sum by (mode) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))", "legendFormat": "{{mode}}", "refId": "A" } ]
+          "gridPos": { "h": 4, "w": 8, "x": 0, "y": 60 },
+          "fieldConfig": { "defaults": { "min": 0, "max": 1, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+          "targets": [ { "expr": "kube_node_status_condition{condition=\"Ready\", status=\"true\", node=~\"$node\"}", "legendFormat": "{{node}}", "instant": true, "refId": "A" } ]
         },
         {
-          "title": "Memory", "type": "timeseries",
+          "title": "Node Exporter targets", "type": "stat",
+          "description": "Prometheus scrape health for each selected node (1 = reachable).",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 60 },
-          "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
-          "targets": [
-            { "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", "legendFormat": "used", "refId": "A" },
-            { "expr": "node_memory_MemTotal_bytes", "legendFormat": "total", "refId": "B" }
-          ]
+          "gridPos": { "h": 4, "w": 8, "x": 8, "y": 60 },
+          "fieldConfig": { "defaults": { "min": 0, "max": 1, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+          "targets": [ { "expr": "up{job=\"node-exporter\", node=~\"$node\"}", "legendFormat": "{{node}}", "instant": true, "refId": "A" } ]
+        },
+        {
+          "title": "Ready backend replicas by node", "type": "stat",
+          "description": "Ready Kotlin backend replicas currently placed on each selected node.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 4, "w": 8, "x": 16, "y": 60 },
+          "fieldConfig": { "defaults": { "decimals": 0 }, "overrides": [] },
+          "targets": [ { "expr": "sum by (node) (kube_pod_status_ready{namespace=\"hyuabot\", condition=\"true\", pod=~\"hyuabot-backend-kotlin-.*\"} * on (namespace, pod) group_left(node) kube_pod_info{namespace=\"hyuabot\", node=~\"$node\"})", "legendFormat": "{{node}}", "instant": true, "refId": "A" } ]
+        },
+        {
+          "title": "CPU utilization by node", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 64 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+          "targets": [ { "expr": "100 * (1 - avg by (node) (rate(node_cpu_seconds_total{job=\"node-exporter\", node=~\"$node\", mode=\"idle\"}[5m])))", "legendFormat": "{{node}}", "refId": "A" } ]
+        },
+        {
+          "title": "Memory utilization by node", "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 64 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+          "targets": [ { "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\", node=~\"$node\"} / node_memory_MemTotal_bytes{job=\"node-exporter\", node=~\"$node\"})", "legendFormat": "{{node}}", "refId": "A" } ]
         },
         {
           "title": "Filesystem usage % (/)", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 67 },
-          "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
-          "targets": [ { "expr": "100 * (1 - node_filesystem_avail_bytes{mountpoint=\"/\", fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\", fstype!~\"tmpfs|overlay\"})", "legendFormat": "{{mountpoint}}", "refId": "A" } ]
+          "gridPos": { "h": 7, "w": 8, "x": 0, "y": 71 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+          "targets": [ { "expr": "100 * (1 - node_filesystem_avail_bytes{job=\"node-exporter\", node=~\"$node\", mountpoint=\"/\", fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{job=\"node-exporter\", node=~\"$node\", mountpoint=\"/\", fstype!~\"tmpfs|overlay\"})", "legendFormat": "{{node}}", "refId": "A" } ]
         },
         {
           "title": "Disk I/O", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 67 },
+          "gridPos": { "h": 7, "w": 8, "x": 8, "y": 71 },
           "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
           "targets": [
-            { "expr": "sum(rate(node_disk_read_bytes_total[5m]))", "legendFormat": "read", "refId": "A" },
-            { "expr": "sum(rate(node_disk_written_bytes_total[5m]))", "legendFormat": "write", "refId": "B" }
+            { "expr": "sum by (node) (rate(node_disk_read_bytes_total{job=\"node-exporter\", node=~\"$node\"}[5m]))", "legendFormat": "{{node}} read", "refId": "A" },
+            { "expr": "sum by (node) (rate(node_disk_written_bytes_total{job=\"node-exporter\", node=~\"$node\"}[5m]))", "legendFormat": "{{node}} write", "refId": "B" }
           ]
         },
         {
           "title": "Network", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 67 },
+          "gridPos": { "h": 7, "w": 8, "x": 16, "y": 71 },
           "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
           "targets": [
-            { "expr": "sum(rate(node_network_receive_bytes_total{device!~\"lo|veth.*|cni.*|flannel.*\"}[5m]))", "legendFormat": "rx", "refId": "A" },
-            { "expr": "sum(rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|cni.*|flannel.*\"}[5m]))", "legendFormat": "tx", "refId": "B" }
+            { "expr": "sum by (node) (rate(node_network_receive_bytes_total{job=\"node-exporter\", node=~\"$node\", device!~\"lo|veth.*|cni.*|flannel.*\"}[5m]))", "legendFormat": "{{node}} rx", "refId": "A" },
+            { "expr": "sum by (node) (rate(node_network_transmit_bytes_total{job=\"node-exporter\", node=~\"$node\", device!~\"lo|veth.*|cni.*|flannel.*\"}[5m]))", "legendFormat": "{{node}} tx", "refId": "B" }
           ]
         },
         {
-          "title": "Load average", "type": "timeseries",
+          "title": "Load average by node", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 74 },
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 78 },
           "targets": [
-            { "expr": "node_load1", "legendFormat": "1m", "refId": "A" },
-            { "expr": "node_load5", "legendFormat": "5m", "refId": "B" },
-            { "expr": "node_load15", "legendFormat": "15m", "refId": "C" }
+            { "expr": "node_load1{job=\"node-exporter\", node=~\"$node\"}", "legendFormat": "{{node}} 1m", "refId": "A" },
+            { "expr": "node_load5{job=\"node-exporter\", node=~\"$node\"}", "legendFormat": "{{node}} 5m", "refId": "B" },
+            { "expr": "node_load15{job=\"node-exporter\", node=~\"$node\"}", "legendFormat": "{{node}} 15m", "refId": "C" }
           ]
         },
 
-        { "type": "row", "title": "Cache (Spring/Redis)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 80 } },
+        { "type": "row", "title": "Cache (Spring/Redis)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 84 } },
         {
           "title": "Hit ratio (overall)", "type": "gauge",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 81 },
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 85 },
           "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 80 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
-          "targets": [ { "expr": "100 * sum(rate(cache_gets_total{application=\"$application\", result=\"hit\"}[5m])) / clamp_min(sum(rate(cache_gets_total{application=\"$application\"}[5m])), 0.001)", "refId": "A" } ]
+          "targets": [ { "expr": "100 * sum(rate(cache_gets_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", result=\"hit\"}[5m])) / clamp_min(sum(rate(cache_gets_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])), 0.001)", "refId": "A" } ]
         },
         {
           "title": "Hit ratio by cache", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 18, "x": 6, "y": 81 },
+          "gridPos": { "h": 6, "w": 18, "x": 6, "y": 85 },
           "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
-          "targets": [ { "expr": "sum by (cache) (rate(cache_gets_total{application=\"$application\", result=\"hit\"}[5m])) / clamp_min(sum by (cache) (rate(cache_gets_total{application=\"$application\"}[5m])), 0.001)", "legendFormat": "{{cache}}", "refId": "A" } ]
+          "targets": [ { "expr": "sum by (cache) (rate(cache_gets_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\", result=\"hit\"}[5m])) / clamp_min(sum by (cache) (rate(cache_gets_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m])), 0.001)", "legendFormat": "{{cache}}", "refId": "A" } ]
         },
         {
           "title": "Gets by result (hit/miss)", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 87 },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 91 },
           "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-          "targets": [ { "expr": "sum by (cache, result) (rate(cache_gets_total{application=\"$application\"}[5m]))", "legendFormat": "{{cache}} {{result}}", "refId": "A" } ]
+          "targets": [ { "expr": "sum by (cache, result) (rate(cache_gets_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]))", "legendFormat": "{{cache}} {{result}}", "refId": "A" } ]
         },
         {
           "title": "Puts & removals by cache", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 87 },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 91 },
           "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
           "targets": [
-            { "expr": "sum by (cache) (rate(cache_puts_total{application=\"$application\"}[5m]))", "legendFormat": "{{cache}} puts", "refId": "A" },
-            { "expr": "sum by (cache) (rate(cache_removals_total{application=\"$application\"}[5m]))", "legendFormat": "{{cache}} removals", "refId": "B" }
+            { "expr": "sum by (cache) (rate(cache_puts_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]))", "legendFormat": "{{cache}} puts", "refId": "A" },
+            { "expr": "sum by (cache) (rate(cache_removals_total{application=\"$application\", pod=~\"$backend_pod\", node=~\"$node\"}[5m]))", "legendFormat": "{{cache}} removals", "refId": "B" }
           ]
         },
         {
           "title": "Redis hit ratio (server)", "type": "gauge",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 94 },
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 98 },
           "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 80 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
           "targets": [ { "expr": "100 * rate(redis_keyspace_hits_total[5m]) / clamp_min(rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]), 0.001)", "refId": "A" } ]
         },
         {
           "title": "Redis memory used %", "type": "gauge",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 6, "x": 6, "y": 94 },
+          "gridPos": { "h": 6, "w": 6, "x": 6, "y": 98 },
           "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 95 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
           "targets": [ { "expr": "100 * redis_memory_used_bytes / clamp_min(redis_memory_max_bytes, 1)", "refId": "A" } ]
         },
         {
           "title": "Cached keys", "type": "stat",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 94 },
+          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 98 },
           "targets": [ { "expr": "sum(redis_db_keys)", "refId": "A" } ]
         },
         {
           "title": "Connected clients", "type": "stat",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 94 },
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 98 },
           "targets": [ { "expr": "redis_connected_clients", "refId": "A" } ]
         },
         {
           "title": "Evicted / expired keys", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 100 },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 104 },
           "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
           "targets": [
             { "expr": "rate(redis_evicted_keys_total[5m])", "legendFormat": "evicted", "refId": "A" },
@@ -517,7 +699,7 @@ data:
         {
           "title": "Keyspace hits vs misses", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 100 },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 104 },
           "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
           "targets": [
             { "expr": "rate(redis_keyspace_hits_total[5m])", "legendFormat": "hits", "refId": "A" },
@@ -527,7 +709,7 @@ data:
         {
           "title": "Redis memory used", "type": "timeseries",
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 107 },
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 111 },
           "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
           "targets": [
             { "expr": "redis_memory_used_bytes", "legendFormat": "used", "refId": "A" },
@@ -949,10 +1131,10 @@ spec:
           resources:
             requests:
               memory: "128Mi"
-              cpu: "100m"
+              cpu: "25m"
             limits:
               memory: "256Mi"
-              cpu: "500m"
+              cpu: "200m"
           volumeMounts:
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources

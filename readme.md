@@ -69,28 +69,46 @@ Manifests are applied in numbered order:
 | File                           | Resource             | Description                                     |
 |--------------------------------|----------------------|-------------------------------------------------|
 | `k8s/1.namespace.yaml`         | Namespace            | Creates the `hyuabot` namespace                 |
-| `k8s/2.secret.yaml`            | Secret / ConfigMap   | API keys, DB credentials                        |
+| `k8s/2.secret.example.yaml`    | Secret template      | API keys, DB credentials                        |
 | `k8s/3.database.yaml`          | Deployment + Service | PostgreSQL 17 and Redis                         |
 | `k8s/4.initial-loader.yml`     | Job                  | Runs `database-initializer` once                |
 | `k8s/5.one-time-loader.yaml`   | Jobs                 | Loads building, bus, subway, shuttle timetables |
 | `k8s/6.multi-time-loader.yaml` | CronJobs             | Recurring realtime and periodic updaters        |
 | `k8s/7.api.yaml`               | Deployment + Service | Kotlin GraphQL backend                          |
 | `k8s/8.kakao.yaml`             | Deployment + Service | Kakao chatbot backend (Go)                      |
-| `k8s/9.monitoring.yaml`        | Prometheus + Grafana | Metrics dashboards and operational alerts      |
+| `k8s/9.monitoring.yaml`        | Prometheus + Grafana | Per-node and per-pod dashboards and alerts      |
+| `k8s/10.cronjob-monitoring.yaml` | Monitoring metrics | CronJob and Kubernetes state metrics            |
+| `k8s/11.metrics-server.yaml`   | Metrics API          | Cross-region K3s resource metrics               |
 
 ### Applying the stack
 
 ```bash
 kubectl apply -f k8s/1.namespace.yaml
+
+# Create the local Secret manifest and replace every placeholder value
+cp k8s/2.secret.example.yaml k8s/2.secret.yaml
 kubectl apply -f k8s/2.secret.yaml
+
+# Create or update the SQL ConfigMap mounted by the migration job
+kubectl create configmap create-database \
+  --namespace hyuabot \
+  --from-file=database/create_database.sql \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 kubectl apply -f k8s/3.database.yaml
-# Wait for PostgreSQL to be ready, then run the migration job
+
+# Wait for the schema migration to finish before running the data loaders
+kubectl wait --namespace hyuabot \
+  --for=condition=complete job/migration-database \
+  --timeout=300s
+
 kubectl apply -f k8s/4.initial-loader.yml
 kubectl apply -f k8s/5.one-time-loader.yaml
 kubectl apply -f k8s/6.multi-time-loader.yaml
 kubectl apply -f k8s/7.api.yaml
 kubectl apply -f k8s/8.kakao.yaml
 kubectl apply -f k8s/9.monitoring.yaml
+kubectl apply -f k8s/10.cronjob-monitoring.yaml
 ```
 
 Before deploying the holiday updater or the backend holiday audit, apply
@@ -98,21 +116,55 @@ Before deploying the holiday updater or the backend holiday audit, apply
 The migration aborts without deleting rows when duplicate shuttle decisions exist;
 resolve any reported `(holiday_date, calendar_type)` duplicates and rerun it.
 
-### Required secrets (`k8s/2.secret.yaml`)
+### Cross-region metrics-server
 
-| Key                 | Used by                                |
-|---------------------|----------------------------------------|
-| `DB_ID`             | All database-connected containers      |
-| `DB_PASSWORD`       | All database-connected containers      |
-| `BUS_API_KEY`       | bus-timetable-updater, bus-log-updater, holiday-updater |
-| `METRO_API_KEY`     | subway-realtime-updater                |
-| `WEATHER_API_KEY`   | weather-updater                        |
-| `GOOGLE_PROJECT_ID` | library-updater (Firebase FCM)         |
-| `APNS_TEAM_ID`      | backend Live Activity APNs push        |
-| `APNS_KEY_ID`       | backend Live Activity APNs push        |
-| `APNS_PRIVATE_KEY`  | backend Live Activity APNs push        |
-| `NOTIFIER_SERVICE_TOKEN` | backend-to-notifier authentication |
-| `NOTIFIER_GRAFANA_TOKEN` | Grafana webhook authentication     |
+K3s's packaged metrics-server prefers one node address type for every node. In this cross-region cluster, the control-plane node is reachable through its private address while the worker kubelet is reachable through its public address. The custom metrics-server maps each node hostname to the address reachable from `personal-project-vm`.
+
+Disable the packaged component in `/etc/rancher/k3s/config.yaml` before deploying the custom manifest:
+
+```yaml
+disable:
+  - servicelb
+  - traefik
+  - metrics-server
+```
+
+Copy `k8s/11.metrics-server.yaml` to `/var/lib/rancher/k3s/server/manifests/hyuabot-metrics-server.yaml`, then restart K3s. K3s automatically deploys files in that directory.
+
+```bash
+sudo install -m 0600 \
+  k8s/11.metrics-server.yaml \
+  /var/lib/rancher/k3s/server/manifests/hyuabot-metrics-server.yaml
+sudo systemctl restart k3s
+sudo k3s kubectl rollout status \
+  --namespace kube-system \
+  deployment/metrics-server \
+  --timeout=180s
+sudo k3s kubectl top nodes
+```
+
+The custom Deployment is pinned to `personal-project-vm`. If a node name or address changes, update `nodeSelector` and `hostAliases` before restarting K3s.
+
+### Required secrets (`k8s/2.secret.example.yaml`)
+
+Copy the example to `k8s/2.secret.yaml`, replace every placeholder, and keep the resulting file local. The actual Secret manifest is ignored by Git.
+
+| Key                         | Used by                                                   |
+|-----------------------------|-----------------------------------------------------------|
+| `DB_ID`                     | All database-connected containers                         |
+| `DB_PASSWORD`               | All database-connected containers                         |
+| `BUS_API_KEY`               | bus-timetable-updater, bus-log-updater, holiday-updater   |
+| `METRO_API_KEY`             | subway-realtime-updater                                   |
+| `WEATHER_API_KEY`           | weather-updater                                           |
+| `GOOGLE_PROJECT_ID`         | library-updater (Firebase FCM)                            |
+| `GRAFANA_ADMIN_PASSWORD`    | Grafana administrator                                     |
+| `GRAFANA_SMTP_FROM_ADDRESS` | Grafana alert email sender                                |
+| `GRAFANA_SMTP_PASSWORD`     | Grafana SMTP authentication                               |
+| `APNS_TEAM_ID`              | backend Live Activity APNs push                           |
+| `APNS_KEY_ID`               | backend Live Activity APNs push                           |
+| `APNS_PRIVATE_KEY`          | backend Live Activity APNs push                           |
+| `NOTIFIER_SERVICE_TOKEN`    | backend-to-notifier authentication                        |
+| `NOTIFIER_GRAFANA_TOKEN`    | Grafana webhook authentication                            |
 
 The two notifier tokens must match the values configured on the separate notifier host. Generate independent, random values for each token and do not commit their decoded values.
 
@@ -129,7 +181,13 @@ This feature has no PostgreSQL schema or data migration.
 
 ### Persistent storage
 
-PostgreSQL data is persisted to `/mnt/data/postgres-pv-volume` on the host node (5 GiB PersistentVolume).
+PostgreSQL data is persisted to `/mnt/data/postgres-pv-volume` on `personal-project-vm` (5 GiB PersistentVolume). The PersistentVolume node affinity and database Deployment node selector keep the host-local data on that node when workers join the cluster.
+
+On an existing cluster, `PersistentVolume.spec.nodeAffinity` cannot be added with a normal `kubectl apply`. Scale the database down and recreate only the retained PV/PVC objects before applying this manifest. The host directory must not be deleted.
+
+The two Kotlin backend replicas use a preferred hostname topology spread constraint, so they are distributed across available nodes without becoming unschedulable when only one node is available.
+
+Prometheus discovers the Kotlin backend and per-node Node Exporter proxy pods through the Kubernetes API and attaches their pod and node names to every scraped series. The proxies carry host metrics over the encrypted pod network without exposing Node Exporter across regions. The default Grafana dashboard can filter by node and backend pod, and compares node readiness, replica placement, CPU, memory, filesystem, disk, network, and load across the cluster.
 
 ## Services & Ports
 
@@ -137,9 +195,9 @@ PostgreSQL data is persisted to `/mnt/data/postgres-pv-volume` on the host node 
 |----------------------------------|---------------|----------|----------------|
 | `hyuabot-database`               | 5432          | 30432    | PostgreSQL     |
 | `hyuabot-redis`                  | 6379          | 30379    | Redis          |
-| `hyuabot-backend-kotlin-service` | 8080          | —        | ClusterIP only |
+| `hyuabot-backend-kotlin-service` | 8080          | 30001    | NodePort; behind Nginx Proxy Manager |
 | Kakao backend                    | 38001         | 30002    | NodePort       |
-| `prometheus`                     | 9090          | —        | ClusterIP; scrapes backend `/actuator/prometheus` |
+| `prometheus`                     | 9090          | —        | ClusterIP; discovers backend and Node Exporter pods |
 | `grafana`                        | 3000          | 30300    | NodePort; behind host Nginx at `grafana.hyuabot.app` |
 
 ## CronJob Schedule Summary
