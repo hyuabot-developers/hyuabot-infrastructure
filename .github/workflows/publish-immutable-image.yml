@@ -91,7 +91,7 @@ jobs:
           tags: ${{ env.IMAGE_NAME }}
           no-cache: ${{ inputs.no-cache }}
       - name: Publish image to first-node registry
-        uses: hyuabot-developers/hyuabot-infrastructure/.github/actions/publish-local-registry@bdde4f2fa8206bb5ca4d1780ace434b8f855b379
+        uses: hyuabot-developers/hyuabot-infrastructure/.github/actions/publish-local-registry@4f78248aea4c79398428eb83b56c2b86d21b6672
         with:
           image: ${{ env.IMAGE_NAME }}
           use-mac: ${{ needs.select-build-runner.outputs.use-mac }}

@@ -11,6 +11,7 @@ inputs:
   first-host:
     description: First-node SSH hostname or user@hostname used by a Mac build.
     required: false
+    default: oracle.hyuabot.app
   first-user:
     description: Default SSH user when first-host does not contain one.
     required: false
