@@ -24,7 +24,7 @@ runs:
   steps:
     - id: sync
       name: Copy and verify image on worker registry
-      shell: zsh
+      shell: /usr/bin/zsh -f {0}
       env:
         IMAGE_NAME: ${{ inputs.image }}
         WORKER_HOST: ${{ inputs.worker-host }}
