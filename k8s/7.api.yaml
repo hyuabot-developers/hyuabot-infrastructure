@@ -72,8 +72,8 @@ spec:
             memory: "1Gi"
             cpu: "150m"
           limits:
-            memory: "1536Mi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "1500m"
         lifecycle:
           preStop:
             exec:
