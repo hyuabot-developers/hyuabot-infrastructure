@@ -1,6 +1,6 @@
-# Existing-cluster configuration only. The container image is intentionally
-# omitted because the weather updater deployment workflow owns its immutable
-# commit-SHA image.
+# Strategic merge patch for an existing cluster. Apply with `kubectl patch`,
+# not `kubectl apply`. The weather updater deployment workflow owns the
+# immutable commit-SHA image, so this patch intentionally omits it.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
