@@ -73,7 +73,8 @@ Manifests are applied in numbered order:
 | `k8s/3.database.yaml`          | Deployment + Service | PostgreSQL 17 and Redis                         |
 | `k8s/4.initial-loader.yml`     | Job                  | Runs `database-initializer` once                |
 | `k8s/5.one-time-loader.yaml`   | Jobs                 | Loads building, bus, subway, shuttle timetables |
-| `k8s/6.multi-time-loader.yaml` | CronJobs             | Recurring realtime and periodic updaters        |
+| `k8s/bootstrap/6.multi-time-loader.yaml` | CronJobs   | Bootstrap recurring realtime and periodic updaters |
+| `k8s/runtime/weather-home-forecast.yaml` | CronJob config | Existing-cluster home forecast configuration  |
 | `k8s/7.api.yaml`               | Deployment + Service | Kotlin GraphQL backend                          |
 | `k8s/8.kakao.yaml`             | Deployment + Service | Kakao chatbot backend (Go)                      |
 | `k8s/9.monitoring.yaml`        | Prometheus + Grafana | Per-node and per-pod dashboards and alerts      |
@@ -104,11 +105,30 @@ kubectl wait --namespace hyuabot \
 
 kubectl apply -f k8s/4.initial-loader.yml
 kubectl apply -f k8s/5.one-time-loader.yaml
-kubectl apply -f k8s/6.multi-time-loader.yaml
+kubectl apply -f k8s/bootstrap/6.multi-time-loader.yaml
 kubectl apply -f k8s/7.api.yaml
 kubectl apply -f k8s/8.kakao.yaml
 kubectl apply -f k8s/9.monitoring.yaml
 kubectl apply -f k8s/10.cronjob-monitoring.yaml
+```
+
+The recurring updater manifest is for cluster bootstrap only. Its untagged
+images create the initial workloads, after which each application repository's
+deployment workflow owns the live image field and pins it to a full Git commit
+SHA. Reapplying the bootstrap manifest to an existing cluster would replace
+those immutable image references.
+
+Apply partial runtime manifests to update an existing cluster without taking
+ownership of its image fields:
+
+```bash
+kubectl diff --server-side \
+  --field-manager=hyuabot-runtime-config \
+  -f k8s/runtime/weather-home-forecast.yaml
+
+kubectl apply --server-side \
+  --field-manager=hyuabot-runtime-config \
+  -f k8s/runtime/weather-home-forecast.yaml
 ```
 
 Before deploying the holiday updater or the backend holiday audit, apply

@@ -1,0 +1,22 @@
+# Existing-cluster configuration only. The container image is intentionally
+# omitted because the weather updater deployment workflow owns its immutable
+# commit-SHA image.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: weather-cron-job
+  namespace: hyuabot
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: weather-cron-job
+            env:
+            - name: REDIS_HOST
+              value: hyuabot-redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: WEATHER_FORECAST_REDIS_KEY
+              value: weather:home:erica
