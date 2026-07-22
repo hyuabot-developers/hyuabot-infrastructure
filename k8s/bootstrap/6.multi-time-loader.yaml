@@ -1,3 +1,6 @@
+# Bootstrap only. Application deploy workflows own live container image fields
+# after creation. Do not reapply this file to an existing cluster; use the
+# partial manifests in k8s/runtime instead.
 # Bus Realtime Loader
 apiVersion: batch/v1
 kind: CronJob
