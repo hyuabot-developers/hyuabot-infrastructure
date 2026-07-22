@@ -13,6 +13,13 @@ spec:
         spec:
           containers:
           - name: weather-cron-job
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "25m"
+              limits:
+                memory: "384Mi"
+                cpu: "200m"
             env:
             - name: REDIS_HOST
               value: hyuabot-redis
