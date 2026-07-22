@@ -1,3 +1,6 @@
+# Bootstrap only. The backend deployment workflow owns the live container
+# image after creation and pins it to a full Git commit SHA. Do not reapply
+# this file to an existing cluster; use the patch in k8s/runtime instead.
 # Deploy API Server
 apiVersion: apps/v1
 kind: Deployment

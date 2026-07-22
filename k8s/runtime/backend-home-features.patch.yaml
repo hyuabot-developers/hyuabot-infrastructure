@@ -1,0 +1,18 @@
+# Strategic merge patch for an existing cluster. Apply with `kubectl patch`,
+# not `kubectl apply`. The backend deployment workflow owns the immutable
+# commit-SHA image, so this patch intentionally omits it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyuabot-backend-kotlin
+  namespace: hyuabot
+spec:
+  template:
+    spec:
+      containers:
+      - name: api
+        env:
+        - name: SPRING_DATA_REDIS_HOST
+          value: "hyuabot-redis"
+        - name: SPRING_DATA_REDIS_PORT
+          value: "6379"

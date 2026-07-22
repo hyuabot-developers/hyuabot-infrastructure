@@ -74,8 +74,9 @@ Manifests are applied in numbered order:
 | `k8s/4.initial-loader.yml`     | Job                  | Runs `database-initializer` once                |
 | `k8s/5.one-time-loader.yaml`   | Jobs                 | Loads building, bus, subway, shuttle timetables |
 | `k8s/bootstrap/6.multi-time-loader.yaml` | CronJobs   | Bootstrap recurring realtime and periodic updaters |
-| `k8s/runtime/weather-home-forecast.yaml` | CronJob config | Existing-cluster home forecast configuration  |
-| `k8s/7.api.yaml`               | Deployment + Service | Kotlin GraphQL backend                          |
+| `k8s/bootstrap/7.api.yaml`     | Deployment + Service | Bootstrap Kotlin GraphQL backend                |
+| `k8s/runtime/weather-home-forecast.patch.yaml` | CronJob patch | Existing-cluster home forecast configuration |
+| `k8s/runtime/backend-home-features.patch.yaml` | Deployment patch | Existing-cluster backend Redis configuration |
 | `k8s/8.kakao.yaml`             | Deployment + Service | Kakao chatbot backend (Go)                      |
 | `k8s/9.monitoring.yaml`        | Prometheus + Grafana | Per-node and per-pod dashboards and alerts      |
 | `k8s/10.cronjob-monitoring.yaml` | Monitoring metrics | CronJob and Kubernetes state metrics            |
@@ -106,30 +107,57 @@ kubectl wait --namespace hyuabot \
 kubectl apply -f k8s/4.initial-loader.yml
 kubectl apply -f k8s/5.one-time-loader.yaml
 kubectl apply -f k8s/bootstrap/6.multi-time-loader.yaml
-kubectl apply -f k8s/7.api.yaml
+kubectl apply -f k8s/bootstrap/7.api.yaml
 kubectl apply -f k8s/8.kakao.yaml
 kubectl apply -f k8s/9.monitoring.yaml
 kubectl apply -f k8s/10.cronjob-monitoring.yaml
 ```
 
-The recurring updater manifest is for cluster bootstrap only. Its untagged
-images create the initial workloads, after which each application repository's
-deployment workflow owns the live image field and pins it to a full Git commit
-SHA. Reapplying the bootstrap manifest to an existing cluster would replace
-those immutable image references.
+The recurring updater and backend manifests under `k8s/bootstrap` are for
+cluster creation only. Their initial images create the workloads, after which
+each application repository's deployment workflow owns the live image field
+and pins it to a full Git commit SHA. Reapplying a bootstrap manifest to an
+existing cluster would replace that immutable image reference.
 
-Apply partial runtime manifests to update an existing cluster without taking
-ownership of its image fields:
+Files ending in `.patch.yaml` are strategic merge patches for existing
+resources. Always use `kubectl patch --type=strategic --patch-file`; do not use
+`kubectl apply` on these files. Kubernetes merges the patch into the live
+object, so required fields omitted from the patch and the workflow-managed
+image remain unchanged.
 
 ```bash
-kubectl diff --server-side \
-  --field-manager=hyuabot-runtime-config \
-  -f k8s/runtime/weather-home-forecast.yaml
+kubectl patch cronjob weather-cron-job \
+  --namespace hyuabot \
+  --type=strategic \
+  --patch-file=k8s/runtime/weather-home-forecast.patch.yaml
 
-kubectl apply --server-side \
-  --field-manager=hyuabot-runtime-config \
-  -f k8s/runtime/weather-home-forecast.yaml
+kubectl patch deployment hyuabot-backend-kotlin \
+  --namespace hyuabot \
+  --type=strategic \
+  --patch-file=k8s/runtime/backend-home-features.patch.yaml
 ```
+
+Six updater CronJobs use `25m` CPU and `128Mi` memory requests with `200m` CPU
+and `384Mi` memory limits in the bootstrap manifest. On an existing cluster,
+apply those resource fields without changing their images as follows:
+
+```bash
+for cronjob in \
+  bus-realtime-cron-job \
+  bus-departure-log-cron-job \
+  subway-realtime-cron-job \
+  reading-room-cron-job \
+  cafeteria-cron-job \
+  weather-cron-job
+do
+  kubectl set resources cronjob "$cronjob" \
+    --namespace hyuabot \
+    --requests=cpu=25m,memory=128Mi \
+    --limits=cpu=200m,memory=384Mi
+done
+```
+
+Application deployment workflows continue to control the SHA image tags.
 
 Before deploying the holiday updater or the backend holiday audit, apply
 `database/migrations/20260717_holiday_automation.sql` to the existing database.
@@ -199,7 +227,7 @@ Operational Web Push is delivered by the private `hyuabot-ops-notifier` service 
 1. Point `notifier.hyuabot.app` to Oracle Instance-2 and allow inbound HTTPS.
 2. Configure the existing reverse proxy to forward HTTPS traffic to the notifier's port; the notifier deployment workflow installs its systemd unit automatically.
 3. Configure its VAPID keys, `SERVICE_TOKEN`, and `GRAFANA_TOKEN`; the two tokens must match this cluster's Kubernetes Secret.
-4. Verify `https://notifier.hyuabot.app/health`, then apply `k8s/7.api.yaml` and `k8s/9.monitoring.yaml`.
+4. Verify `https://notifier.hyuabot.app/health`, then apply `k8s/bootstrap/7.api.yaml` on a new cluster (or the relevant runtime patch on an existing cluster) and `k8s/9.monitoring.yaml`.
 
 This feature has no PostgreSQL schema or data migration.
 
