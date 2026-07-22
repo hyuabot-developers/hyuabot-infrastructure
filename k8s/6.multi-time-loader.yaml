@@ -368,4 +368,10 @@ spec:
                 secretKeyRef:
                   name: secret
                   key: WEATHER_API_KEY
+            - name: REDIS_HOST
+              value: hyuabot-redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: WEATHER_FORECAST_REDIS_KEY
+              value: weather:home:erica
           restartPolicy: OnFailure

@@ -358,6 +358,6 @@ Python CronJob that runs every hour. Scrapes the university dining portal for da
 
 ### hyuabot-weather-updater
 
-Python CronJob that runs every hour at :20. Fetches current weather observations from the Korea Meteorological Administration (KMA) open API and upserts bilingual (Korean/English) weather notices. Deadline: 2 minutes per run, up to 10 retries.
+Python CronJob that runs every hour at :20. Fetches current observations and the remaining daily forecast from the Korea Meteorological Administration (KMA) open API, upserts bilingual weather notices, and publishes a structured home forecast to Redis. The Redis value is ephemeral and the clients fall back to the default home header when it is missing or stale. Deadline: 2 minutes per run, up to 10 retries.
 
 **CI:** flake8 + mypy. **Deploy:** ARM64 Docker build on merged PR.
