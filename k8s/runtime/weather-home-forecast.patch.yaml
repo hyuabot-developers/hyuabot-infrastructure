@@ -7,6 +7,7 @@ metadata:
   name: weather-cron-job
   namespace: hyuabot
 spec:
+  schedule: "20,50 * * * *"
   jobTemplate:
     spec:
       template:
@@ -27,3 +28,9 @@ spec:
               value: "6379"
             - name: WEATHER_FORECAST_REDIS_KEY
               value: weather:home:erica
+            - name: WEATHER_FORECAST_SHADOW_REDIS_KEY
+              value: weather:home:erica:shadow
+            - name: WEATHER_FORECAST_EVALUATION_REDIS_KEY
+              value: weather:home:erica:evaluation
+            - name: HOME_WEATHER_ENSEMBLE_MODE
+              value: shadow
