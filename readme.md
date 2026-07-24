@@ -164,6 +164,12 @@ Before deploying the holiday updater or the backend holiday audit, apply
 The migration aborts without deleting rows when duplicate shuttle decisions exist;
 resolve any reported `(holiday_date, calendar_type)` duplicates and rerun it.
 
+Before deploying shuttle initial-stop rule management, apply
+`database/migrations/20260724_shuttle_initial_stop_rules.sql` to the existing
+database. The rule's optional `start_time` and `end_time` must either both be
+empty (all day) or both be set; ranges that cross midnight are supported by the
+backend.
+
 ### Cross-region metrics-server
 
 K3s's packaged metrics-server prefers one node address type for every node. In this cross-region cluster, the control-plane node is reachable through its private address while the worker kubelet is reachable through its public address. The custom metrics-server maps each node hostname to the address reachable from `personal-project-vm`.

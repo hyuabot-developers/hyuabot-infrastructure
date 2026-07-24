@@ -11,6 +11,7 @@ create schema if not exists public;
 -- 인덱스 삭제
 drop index if exists idx_shuttle_route_stop;
 drop index if exists idx_shuttle_period_type;
+drop index if exists idx_shuttle_initial_stop_rule_active;
 drop index if exists idx_shuttle_holiday_date;
 drop index if exists idx_public_holiday_date;
 drop index if exists idx_commute_shuttle_timetable;
@@ -34,6 +35,7 @@ drop table if exists notices cascade;
 drop table if exists notice_category cascade;
 
 -- 셔틀버스 테이블 삭제
+drop table if exists shuttle_initial_stop_rule cascade;
 drop table if exists shuttle_period cascade;
 drop table if exists shuttle_timetable cascade;
 drop table if exists shuttle_period_type cascade;
@@ -236,6 +238,37 @@ create table if not exists shuttle_period(
 );
 -- 셔틀버스 운행 기간 인덱스
 create index if not exists idx_shuttle_period_type on shuttle_period(period_type, period_start, period_end);
+
+-- 위치와 운행 조건에 따른 셔틀 첫 화면 정류장 규칙
+create table if not exists shuttle_initial_stop_rule(
+    seq serial primary key,
+    rule_name varchar(80) not null,
+    period_type varchar(20) not null references shuttle_period_type(period_type),
+    weekday boolean not null,
+    start_time time,
+    end_time time,
+    stop_name varchar(15) not null references shuttle_stop(stop_name),
+    priority int not null default 0,
+    enabled boolean not null default true,
+    polygon jsonb not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint chk_shuttle_initial_stop_rule_name
+        check (length(trim(rule_name)) > 0),
+    constraint chk_shuttle_initial_stop_rule_time_range
+        check (
+            (start_time is null and end_time is null)
+            or
+            (start_time is not null and end_time is not null and start_time <> end_time)
+        ),
+    constraint chk_shuttle_initial_stop_rule_polygon_type
+        check (jsonb_typeof(polygon) = 'array'),
+    constraint chk_shuttle_initial_stop_rule_polygon_size
+        check (jsonb_array_length(polygon) >= 3)
+);
+
+create index if not exists idx_shuttle_initial_stop_rule_active
+    on shuttle_initial_stop_rule(enabled, period_type, weekday, priority desc, seq);
 
 -- 셔틀버스 운행 시간표
 create table if not exists shuttle_timetable(
