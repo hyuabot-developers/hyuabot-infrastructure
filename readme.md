@@ -260,7 +260,7 @@ Prometheus discovers the Kotlin backend and per-node Node Exporter proxy pods th
 | `subway-realtime-cron-job`   | `* * * * *` (every minute)   | `hyuabot-subway-realtime-updater` |
 | `reading-room-cron-job`      | `* * * * *` (every minute)   | `hyuabot-library-updater`         |
 | `cafeteria-cron-job`         | `0 * * * *` (every hour)     | `hyuabot-cafeteria-updater`       |
-| `weather-cron-job`           | `20 * * * *` (hourly at :20) | `hyuabot-weather-updater`         |
+| `weather-cron-job`           | `20,50 * * * *` (every 30 minutes) | `hyuabot-weather-updater`    |
 | `bus-departure-log-cron-job` | `0 1 * * *` (daily 01:00)    | `hyuabot-bus-log-updater`         |
 | `holiday-cron-job`          | `10 3 * * *` (daily 03:10 KST) | `hyuabot-holiday-updater`       |
 
@@ -406,6 +406,6 @@ Python CronJob that runs every hour. Scrapes the university dining portal for da
 
 ### hyuabot-weather-updater
 
-Python CronJob that runs every hour at :20. Fetches current observations and the remaining daily forecast from the Korea Meteorological Administration (KMA) open API, upserts bilingual weather notices, and publishes a structured home forecast to Redis. The Redis value is ephemeral and the clients fall back to the default home header when it is missing or stale. Deadline: 2 minutes per run, up to 10 retries.
+Python CronJob that runs every 30 minutes at :20 and :50. It reuses a Korea Meteorological Administration (KMA) observation for current conditions and notices, compares JMA, ECMWF, and GFS forecasts through Open-Meteo, and stores the ensemble in shadow Redis keys. The existing KMA forecast remains active until the ensemble mode is promoted after evaluation. Redis values are ephemeral and clients fall back to the default home header when data is missing or stale. Deadline: 2 minutes per run, up to 10 retries.
 
 **CI:** flake8 + mypy. **Deploy:** ARM64 Docker build on merged PR.
