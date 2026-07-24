@@ -382,5 +382,5 @@ spec:
             - name: WEATHER_FORECAST_EVALUATION_REDIS_KEY
               value: weather:home:erica:evaluation
             - name: HOME_WEATHER_ENSEMBLE_MODE
-              value: shadow
+              value: active
           restartPolicy: OnFailure

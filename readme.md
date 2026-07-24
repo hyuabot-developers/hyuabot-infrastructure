@@ -406,6 +406,6 @@ Python CronJob that runs every hour. Scrapes the university dining portal for da
 
 ### hyuabot-weather-updater
 
-Python CronJob that runs every 30 minutes at :20 and :50. It reuses a Korea Meteorological Administration (KMA) observation for current conditions and notices, compares JMA, ECMWF, and GFS forecasts through Open-Meteo, and stores the ensemble in shadow Redis keys. The existing KMA forecast remains active until the ensemble mode is promoted after evaluation. Redis values are ephemeral and clients fall back to the default home header when data is missing or stale. Deadline: 2 minutes per run, up to 10 retries.
+Python CronJob that runs every 30 minutes at :20 and :50. It reuses a Korea Meteorological Administration (KMA) observation for current conditions and notices, compares JMA, ECMWF, and GFS forecasts through Open-Meteo, and publishes their consensus as the active home weather payload. The previous payload remains in a shadow Redis key for diagnosis, while rolling evaluation records track source availability and agreement. Redis values are ephemeral and clients fall back to the default home header when data is missing or stale. Deadline: 2 minutes per run, up to 10 retries.
 
 **CI:** flake8 + mypy. **Deploy:** ARM64 Docker build on merged PR.
