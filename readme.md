@@ -170,6 +170,12 @@ database. The rule's optional `start_time` and `end_time` must either both be
 empty (all day) or both be set; ranges that cross midnight are supported by the
 backend.
 
+Before deploying multilingual subway station names, apply
+`database/migrations/20260810_subway_station_translations.sql` to the existing
+database. The migration creates the stable station-ID translation table and
+backfills the current Korean station names; the database initializer loads the
+verified foreign-language names afterward.
+
 ### Cross-region metrics-server
 
 K3s's packaged metrics-server prefers one node address type for every node. In this cross-region cluster, the control-plane node is reachable through its private address while the worker kubelet is reachable through its public address. The custom metrics-server maps each node hostname to the address reachable from `personal-project-vm`.
