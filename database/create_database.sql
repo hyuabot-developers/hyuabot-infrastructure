@@ -614,6 +614,25 @@ create table if not exists subway_route_station(
         references subway_station(station_name)
 );
 
+-- 전철역 다국어 이름
+create table if not exists subway_station_translation(
+    station_id varchar(10) not null,
+    language varchar(10) not null,
+    name varchar(100) not null,
+    source varchar(30) not null,
+    is_verified boolean not null default false,
+    primary key (station_id, language),
+    constraint fk_subway_station_translation_station_id
+        foreign key (station_id)
+        references subway_route_station(station_id)
+        on update cascade
+        on delete cascade,
+    constraint subway_station_translation_language_check
+        check (language in ('ko', 'en', 'ja', 'zh-Hans', 'zh-Hant')),
+    constraint subway_station_translation_name_check
+        check (length(trim(name)) > 0)
+);
+
 -- 전철 실시간 운행 정보
 create table if not exists subway_realtime(
     station_id varchar(10) not null, -- 역 ID
