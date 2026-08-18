@@ -403,6 +403,9 @@ create materialized view if not exists shuttle_timetable_grouped_view as
     inner join shuttle_route on shuttle_route_stop.route_name = shuttle_route.route_name
     where shuttle_route_stop.stop_name in ('dormitory_o', 'shuttlecock_o', 'station') and shuttle_route.route_tag = 'DJ';
 
+create index if not exists idx_shuttle_timetable_grouped_view_seq
+    on shuttle_timetable_grouped_view (seq);
+
 -- 셔틀 운행 시간표 뷰 업데이트 트리거
 create or replace function update_shuttle_timetable_view()
 returns trigger as $$
@@ -587,6 +590,8 @@ create table if not exists bus_timetable(
 
 -- 버스 운행 시간표 인덱스
 create index if not exists idx_bus_timetable on bus_timetable(route_id, start_stop_id, departure_time, weekday);
+create index if not exists idx_bus_timetable_route_stop_weekday_time
+    on bus_timetable(route_id, start_stop_id, weekday, departure_time);
 
 -- 전철역 정보
 create table if not exists subway_station(
@@ -632,6 +637,10 @@ create table if not exists subway_station_translation(
     constraint subway_station_translation_name_check
         check (length(trim(name)) > 0)
 );
+
+create index if not exists idx_subway_station_translation_language_name
+    on subway_station_translation (language, name)
+    include (station_id);
 
 -- 전철 실시간 운행 정보
 create table if not exists subway_realtime(
