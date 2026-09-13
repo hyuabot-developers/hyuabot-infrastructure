@@ -759,6 +759,7 @@ create table if not exists restaurant(
     breakfast_time varchar(40), -- 아침 식사 시간
     lunch_time varchar(40), -- 점심 식사 시간
     dinner_time varchar(40), -- 저녁 식사 시간
+    url text, -- 식당 정보 URL
     constraint fk_campus_id
         foreign key (campus_id)
         references campus(campus_id)
