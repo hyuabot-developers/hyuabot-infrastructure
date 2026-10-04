@@ -1,0 +1,43 @@
+# One-off B11/B16 seed job. Replace the image tag with the SHA deployed from
+# hyuabot-database-initializer before applying this manifest.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redesign-seed
+  namespace: hyuabot
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      name: redesign-seed
+    spec:
+      containers:
+      - name: redesign-seed
+        image: localhost:5000/hyuabot-database-initializer:<deployed-sha>
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "25m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+        env:
+        - name: POSTGRES_ID
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: DB_ID
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: DB_PASSWORD
+        - name: POSTGRES_HOST
+          value: hyuabot-database
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: hyuabot
+        - name: INITIALIZER_JOBS
+          value: commute_route,subway_facility
+      restartPolicy: Never

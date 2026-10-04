@@ -1,0 +1,21 @@
+# Strategic merge patch for an existing cluster. Apply with `kubectl patch`,
+# not `kubectl apply`. The bus updater workflow owns the immutable image.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bus-realtime-cron-job
+  namespace: hyuabot
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: bus-realtime-cron-job
+            env:
+            - name: BUS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: BUS_API_KEY
+                  optional: true

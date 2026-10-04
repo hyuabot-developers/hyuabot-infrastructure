@@ -421,3 +421,37 @@ Python CronJob that runs every hour. Scrapes the university dining portal for da
 Python CronJob that runs every 30 minutes at :20 and :50. It reuses a Korea Meteorological Administration (KMA) observation for current conditions and notices, compares JMA, ECMWF, and GFS forecasts through Open-Meteo, and publishes their consensus as the active home weather payload. The previous payload remains in a shadow Redis key for diagnosis, while rolling evaluation records track source availability and agreement. Redis values are ephemeral and clients fall back to the default home header when data is missing or stale. Deadline: 2 minutes per run, up to 10 retries.
 
 **CI:** flake8 + mypy. **Deploy:** ARM64 Docker build on merged PR.
+
+## HYUabot redesign: stage 1 server rollout
+
+The stage 1 server changes are additive and require the database migration before the backend image is deployed.
+
+### Keys and runtime patches
+
+The existing keys are `BUS_API_KEY`, `METRO_API_KEY`, and `WEATHER_API_KEY`. Add `KORAIL_API_KEY` and `SEOUL_METRO_ALERT_API_KEY` to Secret `secret` when those APIs have been approved. If either key is not ready, remove its placeholder from the copied Secret manifest; the matching collector skips that API. `BUS_API_KEY` remains optional for the old bus arrival feed, which falls back to the existing sample key.
+
+For a running cluster, apply the bus and subway runtime patches after updating the Secret:
+
+```sh
+kubectl -n hyuabot patch cronjob bus-realtime-cron-job --type=strategic --patch-file k8s/runtime/bus-realtime-redesign.patch.yaml
+kubectl -n hyuabot patch cronjob subway-realtime-cron-job --type=strategic --patch-file k8s/runtime/subway-realtime-redesign.patch.yaml
+```
+
+The bootstrap manifest already maps these keys for new installations. Do not re-apply bootstrap manifests to a running cluster.
+
+### Database and seed
+
+Apply `database/migrations/20261004_redesign.sql` once before deploying the backend or updated collectors. The same additive definitions are mirrored in `database/create_database.sql` for fresh databases.
+
+After the database-initializer image is deployed, replace `<deployed-sha>` in `k8s/runtime/redesign-seed.job.yaml` with that image's deployed SHA, then apply the one-off Job. It runs only `commute_route,subway_facility`; rerunning it is safe. The `src/data/subway_station_facility.csv` file is currently an empty header-only template because the approved source rows were not included. B11's schema and loader are ready, but Hanedae-ap facility results will remain empty until those rows are supplied.
+
+### Recommended PR order and checks
+
+1. Merge infrastructure so the migration and patch files are available; run the documented migration before starting dependent pods.
+2. Merge database-initializer and run the one-off seed Job.
+3. Merge the weather, bus, subway, library, and holiday updater changes.
+4. Merge backend-kotlin last so its validated entities see the migrated columns and tables.
+
+After each updater's next scheduled run, check its logs for optional API skip warnings and confirm the existing snapshot still updates. Check the bus rows for current stop, plate, crowding, and state fields; check subway arrival messages, delay rows, and active alert rows; check Redis `weather:home:erica` for `airQuality`, `humidity`, `windSpeed`, `snowAmount`, `warnings`, and `uvIndex`; and check `special_day` separately from `public_holiday`. Finally, run the Android, watch, and iOS GraphQL operations against the new schema and verify that old queries still execute.
+
+KORAIL coverage of the 4호선 and 수인분당선, the exact operation endpoint/schema for the KORAIL and Seoul Metro alert APIs, and the Ansan warning/UV coverage should be confirmed when the required API approvals are available. `KORAIL_TRAIN_OPERATION_API_URL` and `SEOUL_METRO_ALERT_API_URL` can override the current defaults if the approved service guide specifies a different URL.
