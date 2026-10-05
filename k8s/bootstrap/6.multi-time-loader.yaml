@@ -35,6 +35,12 @@ spec:
                 memory: "384Mi"
                 cpu: "200m"
             env:
+            - name: BUS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: BUS_API_KEY
+                  optional: true
             - name: LOOP_ITERATIONS
               value: "6"
             - name: LOOP_INTERVAL_SECONDS
@@ -92,6 +98,7 @@ spec:
                 secretKeyRef:
                   name: secret
                   key: BUS_API_KEY
+                  optional: true
             - name: POSTGRES_ID
               valueFrom:
                 secretKeyRef:
@@ -218,6 +225,19 @@ spec:
                 secretKeyRef:
                   name: secret
                   key: METRO_API_KEY
+                  optional: true
+            - name: KORAIL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: KORAIL_API_KEY
+                  optional: true
+            - name: SEOUL_METRO_ALERT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret
+                  key: SEOUL_METRO_ALERT_API_KEY
+                  optional: true
           restartPolicy: Never
 ---
 # Reading Room Realtime Loader
@@ -371,6 +391,7 @@ spec:
                 secretKeyRef:
                   name: secret
                   key: WEATHER_API_KEY
+                  optional: true
             - name: REDIS_HOST
               value: hyuabot-redis
             - name: REDIS_PORT

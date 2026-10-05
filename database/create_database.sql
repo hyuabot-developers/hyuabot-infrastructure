@@ -522,6 +522,28 @@ create table if not exists bus_route_stop (
 -- 버스 노선별 정류장 인덱스
 create index if not exists idx_bus_route_stop on bus_route_stop(route_id, stop_id);
 
+-- GBIS v2 route stop list and live vehicle positions
+create table if not exists bus_route_station (
+    route_id int not null references bus_route(route_id),
+    station_seq int not null,
+    station_id int not null,
+    station_name varchar(50) not null,
+    updated_at timestamptz not null default now(),
+    primary key (route_id, station_seq)
+);
+create table if not exists bus_location (
+    route_id int not null references bus_route(route_id),
+    plate_no varchar(20) not null,
+    station_seq int not null,
+    station_id int,
+    crowded smallint,
+    remaining_seat_count int,
+    low_plate boolean,
+    state_code smallint,
+    last_updated_time timestamptz not null,
+    primary key (route_id, plate_no)
+);
+
 -- 공휴일 (버스/전철 공통)
 create table if not exists public_holiday(
     seq serial primary key,
@@ -553,6 +575,10 @@ create table if not exists bus_realtime(
     remaining_time interval not null, -- 남은 시간
     low_plate boolean not null, -- 저상 버스 여부,
     last_updated_time timestamptz not null, -- 마지막 업데이트 시간
+    current_stop_name varchar(50),
+    plate_no varchar(20),
+    crowded smallint,
+    state_code smallint,
     constraint pk_bus_realtime primary key (stop_id, route_id, arrival_seq),
     constraint fk_bus_realtime_stop_id
         foreign key (stop_id, route_id) references bus_route_stop(stop_id, route_id)
@@ -619,6 +645,20 @@ create table if not exists subway_route_station(
         references subway_station(station_name)
 );
 
+create table if not exists subway_station_facility (
+    seq serial primary key,
+    station_id varchar(10) not null references subway_route_station(station_id),
+    facility_type varchar(20) not null check (facility_type in ('elevator', 'escalator', 'wheelchair_lift', 'route')),
+    sort_order int not null default 0,
+    exit_no varchar(10),
+    from_place varchar(50),
+    to_place varchar(50),
+    description_korean varchar(200),
+    description_english varchar(200),
+    source varchar(30) not null default 'KR_NETWORK',
+    unique (station_id, facility_type, sort_order)
+);
+
 -- 전철역 다국어 이름
 create table if not exists subway_station_translation(
     station_id varchar(10) not null,
@@ -656,6 +696,10 @@ create table if not exists subway_realtime(
     is_express_train boolean not null, -- 급행 여부
     is_last_train boolean not null, -- 막차 여부
     status_code int not null, -- 상태 코드
+    arrival_message varchar(100),
+    arrival_message_detail varchar(100),
+    remaining_seconds int,
+    arrival_code smallint,
     constraint pk_subway_realtime primary key (station_id, up_down_type, arrival_seq),
     constraint fk_station_id
         foreign key (station_id)
@@ -664,6 +708,27 @@ create table if not exists subway_realtime(
         foreign key (terminal_station_id)
         references subway_route_station(station_id)
 );
+
+create table if not exists subway_train_delay (
+    run_date date not null,
+    train_number varchar(10) not null,
+    route_id int,
+    delay_minutes int,
+    reference_station_name varchar(30),
+    updated_at timestamptz not null default now(),
+    primary key (run_date, train_number)
+);
+create table if not exists subway_alert (
+    alert_id varchar(50) primary key,
+    route_id int,
+    title varchar(200) not null,
+    content text,
+    starts_at timestamptz,
+    ends_at timestamptz,
+    source varchar(30) not null default 'SEOUL_METRO',
+    updated_at timestamptz not null default now()
+);
+create index if not exists idx_subway_alert_route on subway_alert(route_id, ends_at);
 
 -- 전철 시간표
 create table if not exists subway_timetable(
@@ -787,6 +852,7 @@ create table if not exists reading_room(
     room_name varchar(30) not null, -- 열람실 이름
     is_active boolean not null, -- 열람실 활성화 여부
     is_reservable boolean not null, -- 열람실 예약 가능 여부
+    unable_message varchar(255),
     total int not null, -- 열람실 총 좌석 수
     active_total int not null, -- 열람실 활성화된 좌석 수
     occupied int not null, -- 열람실 사용중인 좌석 수
@@ -796,7 +862,6 @@ create table if not exists reading_room(
         foreign key (campus_id)
         references campus(campus_id)
 );
-
 
 -- 건물 정보
 create table if not exists building(
