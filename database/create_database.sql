@@ -709,27 +709,6 @@ create table if not exists subway_realtime(
         references subway_route_station(station_id)
 );
 
-create table if not exists subway_train_delay (
-    run_date date not null,
-    train_number varchar(10) not null,
-    route_id int,
-    delay_minutes int,
-    reference_station_name varchar(30),
-    updated_at timestamptz not null default now(),
-    primary key (run_date, train_number)
-);
-create table if not exists subway_alert (
-    alert_id varchar(50) primary key,
-    route_id int,
-    title varchar(200) not null,
-    content text,
-    starts_at timestamptz,
-    ends_at timestamptz,
-    source varchar(30) not null default 'SEOUL_METRO',
-    updated_at timestamptz not null default now()
-);
-create index if not exists idx_subway_alert_route on subway_alert(route_id, ends_at);
-
 -- 전철 시간표
 create table if not exists subway_timetable(
     seq serial primary key, -- 시간표 ID

@@ -424,11 +424,11 @@ Python CronJob that runs every 30 minutes at :20 and :50. It reuses a Korea Mete
 
 ## HYUabot redesign: stage 1 server rollout
 
-The stage 1 server changes are additive and require the database migration before the backend image is deployed.
+The stage 1 server changes require the database migrations before the backend image is deployed. The follow-up migration removes storage for the retired Korail train-operation and Seoul Metro alert APIs.
 
 ### Keys and runtime patches
 
-The existing keys are `BUS_API_KEY`, `METRO_API_KEY`, and `WEATHER_API_KEY`. Add `KORAIL_API_KEY` and `SEOUL_METRO_ALERT_API_KEY` to Secret `secret` when those APIs have been approved. If either key is not ready, remove its placeholder from the copied Secret manifest; the matching collector skips that API. `BUS_API_KEY` remains optional for the old bus arrival feed, which falls back to the existing sample key.
+These jobs use `BUS_API_KEY`, `METRO_API_KEY`, and `WEATHER_API_KEY`; the retired train-operation and subway-alert keys are no longer needed. `BUS_API_KEY` remains optional for the old bus arrival feed, which falls back to the existing sample key.
 
 For a running cluster, apply the bus and subway runtime patches after updating the Secret:
 
@@ -441,7 +441,7 @@ The bootstrap manifest already maps these keys for new installations. Do not re-
 
 ### Database and seed
 
-Apply `database/migrations/20261004_redesign.sql` once before deploying the backend or updated collectors. The same additive definitions are mirrored in `database/create_database.sql` for fresh databases.
+Apply `database/migrations/20261004_redesign.sql` once before deploying the backend or updated collectors. Then apply `database/migrations/20261005_remove_b13_b14.sql` to remove the retired `subway_alert` and `subway_train_delay` tables. Both drops are guarded with `IF EXISTS` and do not use `CASCADE`. The remaining schema definitions are mirrored in `database/create_database.sql` for fresh databases.
 
 After the database-initializer image is deployed, replace `<deployed-sha>` in `k8s/runtime/redesign-seed.job.yaml` with that image's deployed SHA, then apply the one-off Job. It runs only `commute_route,subway_facility`; rerunning it is safe. The `src/data/subway_station_facility.csv` file is currently an empty header-only template because the approved source rows were not included. B11's schema and loader are ready, but Hanedae-ap facility results will remain empty until those rows are supplied.
 
@@ -452,7 +452,7 @@ After the database-initializer image is deployed, replace `<deployed-sha>` in `k
 3. Merge the weather, bus, subway, library, and holiday updater changes.
 4. Merge backend-kotlin last so its validated entities see the migrated columns and tables.
 
-After each updater's next scheduled run, check its logs for optional API skip warnings and confirm the existing snapshot still updates. Check the bus rows for current stop, plate, crowding, and state fields; check subway arrival messages, delay rows, and active alert rows; check Redis `weather:home:erica` for `airQuality`, `humidity`, `windSpeed`, `snowAmount`, `warnings`, and `uvIndex`; and confirm `public_holiday` rows updated and `holiday_sync_state` source `KASI` has a fresh `last_success_at`. Finally, run the Android, watch, and iOS GraphQL operations against the new schema and verify that old queries still execute.
+After each updater's next scheduled run, check its logs and confirm the existing snapshot still updates. Check the bus rows for current stop, plate, crowding, and state fields; check subway arrival messages; check Redis `weather:home:erica` for `airQuality`, `humidity`, `windSpeed`, `snowAmount`, `warnings`, and `uvIndex`; and confirm `public_holiday` rows updated and `holiday_sync_state` source `KASI` has a fresh `last_success_at`. Finally, run the Android, watch, and iOS GraphQL operations against the new schema and verify that old queries still execute.
 
 ### Removing an already deployed `special_day` table (manual, opt in)
 
@@ -464,5 +464,3 @@ The redesign migration and fresh schema no longer create `special_day`. For envi
 4. Run `database/manual_cleanup/remove_special_day.sql` once. It deletes only the `KASI_SPECIAL` row from `holiday_sync_state` and drops `special_day` without `CASCADE`.
 
 The cleanup SQL is opt in and is not part of the normal migration sequence. Keep the table if an old backend may still run or be restored.
-
-KORAIL coverage of the 4호선 and 수인분당선, the exact operation endpoint/schema for the KORAIL and Seoul Metro alert APIs, and the Ansan warning/UV coverage should be confirmed when the required API approvals are available. `KORAIL_TRAIN_OPERATION_API_URL` and `SEOUL_METRO_ALERT_API_URL` can override the current defaults if the approved service guide specifies a different URL.

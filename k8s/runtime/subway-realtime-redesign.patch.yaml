@@ -13,15 +13,3 @@ spec:
           containers:
           - name: subway-realtime-cron-job
             env:
-            - name: KORAIL_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: secret
-                  key: KORAIL_API_KEY
-                  optional: true
-            - name: SEOUL_METRO_ALERT_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: secret
-                  key: SEOUL_METRO_ALERT_API_KEY
-                  optional: true
