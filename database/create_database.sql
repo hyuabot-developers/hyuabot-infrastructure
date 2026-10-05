@@ -863,20 +863,6 @@ create table if not exists reading_room(
         references campus(campus_id)
 );
 
--- Solar terms and anniversaries are separate from public_holiday so they do not
--- affect weekend timetable selection.
-create table if not exists special_day (
-    seq serial primary key,
-    day_date date not null,
-    day_name varchar(50) not null,
-    day_kind varchar(20) not null check (day_kind in ('solar_term', 'anniversary')),
-    is_holiday boolean not null default false,
-    source varchar(20) not null default 'KASI',
-    updated_at timestamptz not null default now(),
-    unique (day_date, day_kind, day_name)
-);
-
-
 -- 건물 정보
 create table if not exists building(
     campus_id int not null, -- 캠퍼스 ID

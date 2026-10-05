@@ -15,18 +15,6 @@ alter table subway_realtime add column if not exists arrival_message_detail varc
 alter table subway_realtime add column if not exists remaining_seconds int;
 alter table subway_realtime add column if not exists arrival_code smallint;
 
--- B8: solar terms and anniversaries are separate from timetable holidays.
-create table if not exists special_day (
-    seq serial primary key,
-    day_date date not null,
-    day_name varchar(50) not null,
-    day_kind varchar(20) not null check (day_kind in ('solar_term', 'anniversary')),
-    is_holiday boolean not null default false,
-    source varchar(20) not null default 'KASI',
-    updated_at timestamptz not null default now(),
-    unique (day_date, day_kind, day_name)
-);
-
 -- B11: static station access facilities.
 create table if not exists subway_station_facility (
     seq serial primary key,

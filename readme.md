@@ -452,6 +452,17 @@ After the database-initializer image is deployed, replace `<deployed-sha>` in `k
 3. Merge the weather, bus, subway, library, and holiday updater changes.
 4. Merge backend-kotlin last so its validated entities see the migrated columns and tables.
 
-After each updater's next scheduled run, check its logs for optional API skip warnings and confirm the existing snapshot still updates. Check the bus rows for current stop, plate, crowding, and state fields; check subway arrival messages, delay rows, and active alert rows; check Redis `weather:home:erica` for `airQuality`, `humidity`, `windSpeed`, `snowAmount`, `warnings`, and `uvIndex`; and check `special_day` separately from `public_holiday`. Finally, run the Android, watch, and iOS GraphQL operations against the new schema and verify that old queries still execute.
+After each updater's next scheduled run, check its logs for optional API skip warnings and confirm the existing snapshot still updates. Check the bus rows for current stop, plate, crowding, and state fields; check subway arrival messages, delay rows, and active alert rows; check Redis `weather:home:erica` for `airQuality`, `humidity`, `windSpeed`, `snowAmount`, `warnings`, and `uvIndex`; and confirm `public_holiday` rows updated and `holiday_sync_state` source `KASI` has a fresh `last_success_at`. Finally, run the Android, watch, and iOS GraphQL operations against the new schema and verify that old queries still execute.
+
+### Removing an already deployed `special_day` table (manual, opt in)
+
+The redesign migration and fresh schema no longer create `special_day`. For environments where it was already created, use this rollout order:
+
+1. Deploy the holiday updater without KASI special-day synchronization and confirm it is no longer writing special-day state.
+2. Deploy the backend without the `SpecialDay` entity and `specialDays` query, then confirm every old backend pod is stopped.
+3. Confirm no rollback image or deployment path can start the old backend, whose `ddl-auto=validate` requires the table.
+4. Run `database/manual_cleanup/remove_special_day.sql` once. It deletes only the `KASI_SPECIAL` row from `holiday_sync_state` and drops `special_day` without `CASCADE`.
+
+The cleanup SQL is opt in and is not part of the normal migration sequence. Keep the table if an old backend may still run or be restored.
 
 KORAIL coverage of the 4호선 and 수인분당선, the exact operation endpoint/schema for the KORAIL and Seoul Metro alert APIs, and the Ansan warning/UV coverage should be confirmed when the required API approvals are available. `KORAIL_TRAIN_OPERATION_API_URL` and `SEOUL_METRO_ALERT_API_URL` can override the current defaults if the approved service guide specifies a different URL.

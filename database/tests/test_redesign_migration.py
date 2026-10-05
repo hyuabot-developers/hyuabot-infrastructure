@@ -6,6 +6,7 @@ from pathlib import Path
 DATABASE_DIR = Path(__file__).resolve().parents[1]
 BASE_SCHEMA_PATH = DATABASE_DIR / "create_database.sql"
 MIGRATION_PATH = DATABASE_DIR / "migrations" / "20261004_redesign.sql"
+CLEANUP_SQL_PATH = DATABASE_DIR / "manual_cleanup" / "remove_special_day.sql"
 
 CREATE_TABLE = re.compile(
     r"create\s+table\s+if\s+not\s+exists\s+(\w+)\s*\((.*?)\n\);",
@@ -23,7 +24,6 @@ ADD_COLUMN = re.compile(
 EXPECTED_ADDED_TABLES = {
     "bus_location",
     "bus_route_station",
-    "special_day",
     "subway_alert",
     "subway_station_facility",
     "subway_train_delay",
@@ -208,6 +208,27 @@ class RedesignMigrationTest(unittest.TestCase):
                 f"{index_name} differs between the migration and "
                 "create_database.sql",
             )
+
+    def test_special_day_cleanup_is_separate_and_limited(self) -> None:
+        cleanup = CLEANUP_SQL_PATH.read_text()
+        statements = [
+            statement.strip()
+            for statement in re.sub(r"--[^\n]*", "", cleanup).split(";")
+        ]
+        statements = [normalized(statement) for statement in statements if statement.strip()]
+
+        self.assertNotIn("special_day", self.migration.lower())
+        self.assertNotIn("special_day", self.base_schema.lower())
+        self.assertEqual(
+            statements,
+            [
+                "begin",
+                "delete from holiday_sync_state where source = 'kasi_special'",
+                "drop table if exists special_day",
+                "commit",
+            ],
+        )
+        self.assertNotRegex(cleanup, r"(?i)\bcascade\b")
 
 
 if __name__ == "__main__":
