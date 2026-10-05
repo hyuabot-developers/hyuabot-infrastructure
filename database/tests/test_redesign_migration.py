@@ -24,9 +24,7 @@ ADD_COLUMN = re.compile(
 EXPECTED_ADDED_TABLES = {
     "bus_location",
     "bus_route_station",
-    "subway_alert",
     "subway_station_facility",
-    "subway_train_delay",
 }
 EXPECTED_ADDED_COLUMNS = {
     ("bus_realtime", "current_stop_name"),
@@ -39,7 +37,7 @@ EXPECTED_ADDED_COLUMNS = {
     ("subway_realtime", "remaining_seconds"),
     ("subway_realtime", "arrival_code"),
 }
-EXPECTED_ADDED_INDEXES = {"idx_subway_alert_route"}
+EXPECTED_ADDED_INDEXES = set()
 
 
 def normalized(sql: str) -> str:
@@ -129,6 +127,14 @@ class RedesignMigrationTest(unittest.TestCase):
 
     def test_migration_tables_match_the_fresh_database_schema(self) -> None:
         migration_tables = table_definitions(self.migration)
+        dropped_tables = set(
+            re.findall(
+                r"(?i)\bdrop\s+table\s+if\s+exists\s+(\w+)",
+                (DATABASE_DIR / "migrations" / "20261005_remove_b13_b14.sql").read_text(),
+            )
+        )
+        for table_name in dropped_tables:
+            migration_tables.pop(table_name.lower(), None)
         base_tables = table_definitions(self.base_schema)
 
         self.assertEqual(set(migration_tables), EXPECTED_ADDED_TABLES)
@@ -192,10 +198,20 @@ class RedesignMigrationTest(unittest.TestCase):
 
     def test_migration_indexes_match_the_fresh_database_schema(self) -> None:
         migration_indexes = index_definitions(self.migration)
+        dropped_tables = set(
+            re.findall(
+                r"(?i)\bdrop\s+table\s+if\s+exists\s+(\w+)",
+                (DATABASE_DIR / "migrations" / "20261005_remove_b13_b14.sql").read_text(),
+            )
+        )
+        migration_indexes = {
+            name: definition
+            for name, definition in migration_indexes.items()
+            if definition[0] not in {table.lower() for table in dropped_tables}
+        }
         base_indexes = index_definitions(self.base_schema)
 
         self.assertEqual(set(migration_indexes), EXPECTED_ADDED_INDEXES)
-        self.assertTrue(migration_indexes)
         for index_name, definition in migration_indexes.items():
             self.assertIn(
                 index_name,
