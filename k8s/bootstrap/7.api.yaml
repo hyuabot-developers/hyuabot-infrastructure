@@ -97,6 +97,14 @@ spec:
             secretKeyRef:
               name: secret
               key: APNS_PRIVATE_KEY
+        - name: FCM_ENABLED
+          value: "true"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/firebase/service-account.json
+        volumeMounts:
+        - name: firebase-service-account
+          mountPath: /etc/firebase
+          readOnly: true
         resources:
           requests:
             memory: "1Gi"
@@ -124,6 +132,10 @@ spec:
           periodSeconds: 20
           timeoutSeconds: 5
           failureThreshold: 3
+      volumes:
+      - name: firebase-service-account
+        secret:
+          secretName: firebase-service-account
 ---
 # Service for API Server
 apiVersion: v1
